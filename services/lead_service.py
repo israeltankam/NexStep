@@ -64,9 +64,10 @@ def list_reference_values(conn: sqlite3.Connection, organization_id: str, table:
     allowed = {"pipeline_stages", "lead_statuses", "client_categories", "action_types"}
     if table not in allowed:
         raise ValueError("Unsupported reference table.")
+    order_by = "name ASC" if table == "client_categories" else "position ASC, name ASC"
     rows = fetch_all(
         conn,
-        f"SELECT name FROM {table} WHERE organization_id = ? AND is_active = 1 ORDER BY position ASC, name ASC",
+        f"SELECT name FROM {table} WHERE organization_id = ? AND is_active = 1 ORDER BY {order_by}",
         (organization_id,),
     )
     return [row["name"] for row in rows]

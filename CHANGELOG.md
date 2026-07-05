@@ -1,5 +1,12 @@
 # Journal de modifications NexStep
 
+## 2026-07-05
+
+- Ajout de la page agent `Nouveau lead` pour créer un lead et sa première action en une seule opération.
+- Ajout du service transactionnel `create_lead_with_first_action`, avec contact optionnel, commentaire optionnel, assignation à l'agent connecté et détection simple de doublon.
+- Correction de la lecture des catégories client, qui n'ont pas de colonne `position` dans le schéma.
+- Ajout des textes bilingues FR/EN, du spinner dédié et de la mise à jour du guide utilisateur.
+
 ## 2026-07-04
 
 - Création de l'application Streamlit NexStep dans `NexStep`.

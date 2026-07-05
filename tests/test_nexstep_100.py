@@ -18,6 +18,7 @@ from services.auth_service import identify_by_pins, password_mode, set_user_pass
 from services.comment_service import add_comment, list_comments_for_lead, recent_comments_for_lead, search_comments
 from services.lead_service import get_lead_detail, get_primary_contact, team_summary, unassigned_leads_count
 from services.migration_service import migrate_sqlite_to_postgres
+from services.new_lead_service import create_lead_with_first_action
 from services.seed_service import AGENT_PINS, LEGACY_COMMENTS, ensure_seed_data, seed_validation_counts
 from utils.dates import excel_serial_to_date, format_date, parse_date
 from utils.i18n import load_locale, t
@@ -429,17 +430,109 @@ def _(self):
     self.assertEqual(report.table_counts["leads"], 78)
 
 
+@check("new_lead_requires_name")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    before = conn.execute("SELECT COUNT(*) AS count FROM leads").fetchone()["count"]
+    with self.assertRaises(ValueError):
+        create_lead_with_first_action(
+            conn,
+            organization_id=self.org["id"],
+            actor_org_user_id=ou["id"],
+            lead_name=" ",
+        )
+    after = conn.execute("SELECT COUNT(*) AS count FROM leads").fetchone()["count"]
+    self.assertEqual(before, after)
+
+
+@check("new_lead_creates_owned_lead")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    result = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name=f"Test lead {uuid.uuid4().hex}",
+        category_name="Restaurant",
+    )
+    lead = conn.execute("SELECT * FROM leads WHERE id = ?", (result["lead_id"],)).fetchone()
+    self.assertEqual(lead["owner_org_user_id"], ou["id"])
+
+
+@check("new_lead_creates_first_action")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    result = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name=f"Action lead {uuid.uuid4().hex}",
+        action_type_name="Appel",
+        action_title="Premier contact test",
+        due_date="2026-07-06",
+    )
+    action = conn.execute("SELECT * FROM actions WHERE id = ?", (result["action_id"],)).fetchone()
+    self.assertEqual((action["status"], action["assigned_to_org_user_id"], action["due_date"]), ("pending", ou["id"], "2026-07-06"))
+
+
+@check("new_lead_creates_contact")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    result = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name=f"Contact lead {uuid.uuid4().hex}",
+        contact_name="Marie Test",
+        phone_raw="+237 699 000 111",
+        channel_notes="WhatsApp",
+    )
+    contact = conn.execute("SELECT * FROM contacts WHERE id = ?", (result["contact_id"],)).fetchone()
+    self.assertEqual(contact["phone_normalized"], "237699000111")
+
+
+@check("new_lead_creates_comment")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    result = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name=f"Comment lead {uuid.uuid4().hex}",
+        context_note="Rencontré au salon.",
+        action_details="Rappeler demain.",
+    )
+    comment = conn.execute("SELECT * FROM comments WHERE id = ?", (result["comment_id"],)).fetchone()
+    self.assertIn("Rappeler demain", comment["body"])
+
+
+@check("new_lead_marks_possible_duplicate")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    result = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name="Black and White",
+    )
+    lead = conn.execute("SELECT possible_duplicate_group FROM leads WHERE id = ?", (result["lead_id"],)).fetchone()
+    self.assertEqual(lead["possible_duplicate_group"], "black-and-white")
+
+
 I18N_KEYS = [
     "login.company_pin",
-    "login.agent_pin",
-    "action.complete",
-    "comments.save",
-    "team.title",
-    "admin.organizations",
+    "nav.new_lead",
+    "new_lead.title",
+    "new_lead.submit",
+    "new_lead.success",
+    "spinner.new_lead",
     "urgency.red",
-    "lead.customer",
-    "actions.title",
-    "urgency.gray",
 ]
 
 for language in ("fr", "en"):

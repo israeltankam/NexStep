@@ -19,6 +19,7 @@ def render_sidebar(session: dict[str, object]) -> str:
 
     pages = [
         ("next_action", "🚀 " + t("nav.next_action", language)),
+        ("new_lead", "➕ " + t("nav.new_lead", language)),
         ("my_actions", "✅ " + t("nav.my_actions", language)),
         ("lead_detail", "💬 " + t("nav.lead_detail", language)),
     ]

@@ -8,7 +8,7 @@ import streamlit as st
 
 from components.sidebar import render_sidebar
 from database.connection import get_connection
-from pages import admin, lead_detail, my_actions, next_action, team_map
+from pages import admin, lead_detail, my_actions, new_lead, next_action, team_map
 from services.auth_service import (
     build_session_payload,
     identify_by_pins,
@@ -138,6 +138,7 @@ def main() -> None:
     st.session_state["page"] = selected
     routes = {
         "next_action": next_action.render,
+        "new_lead": new_lead.render,
         "my_actions": my_actions.render,
         "lead_detail": lead_detail.render,
         "team_map": team_map.render,
