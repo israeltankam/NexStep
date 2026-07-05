@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Migration NexStep SQLite vers PostgreSQL</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; color:#172033; background:#f6f8fb; line-height:1.6; }
+    header { background:#fff; border-bottom:1px solid #d7dee8; padding:22px 28px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+    header img:first-child { width:220px; max-height:96px; object-fit:contain; }
+    header img:last-child { width:112px; max-height:70px; object-fit:contain; opacity:.82; }
+    main { max-width:980px; margin:0 auto; padding:28px 20px 56px; }
+    section { background:#fff; border:1px solid #d7dee8; border-radius:8px; padding:22px; margin:18px 0; }
+    h1, h2 { margin-top:0; }
+    h2 { color:#0e7c66; }
+    code, pre { background:#edf4ff; border-radius:6px; }
+    code { padding:2px 5px; }
+    pre { padding:14px; overflow:auto; }
+    .muted { color:#667085; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="../assets/logos/nexstep_logo.png" alt="NexStep">
+    <div class="muted">Migration local → cloud</div>
+    <img src="../assets/logos/scaleag_logo.png" alt="scale.ag">
+  </header>
+  <main>
+    <section>
+      <h1>Guide de migration SQLite vers PostgreSQL</h1>
+      <p>Ce guide explique comment passer de la base locale <code>data/local.db</code> à une base PostgreSQL, par exemple Supabase, avant hébergement sur Streamlit Cloud.</p>
+    </section>
+
+    <section>
+      <h2>1. Préparer PostgreSQL</h2>
+      <ol>
+        <li>Créer un projet PostgreSQL ou Supabase.</li>
+        <li>Dans Supabase, ouvrir le projet puis cliquer sur <strong>Connect</strong>.</li>
+        <li>Copier une URL PostgreSQL. Pour la migration, prendre de préférence l'URL <strong>Direct connection</strong>. Si le réseau local refuse l'IPv6, prendre l'URL <strong>Session pooler</strong>.</li>
+        <li>Conserver cette URL dans un endroit sûr. Elle contient ou contiendra le mot de passe de base de données.</li>
+      </ol>
+      <p class="muted">Référence officielle: <a href="https://supabase.com/docs/guides/database/connecting-to-postgres">Supabase - Connect to your database</a>.</p>
+    </section>
+
+    <section>
+      <h2>2. Comprendre et compléter l'URL Supabase</h2>
+      <p>Oui: quand le guide affiche <code>USER:PASSWORD</code>, il faut remplacer ces valeurs par celles données par Supabase. Le plus simple est toutefois de ne pas reconstruire l'URL à la main: copie l'URL complète fournie par Supabase, puis remplace uniquement le placeholder du mot de passe.</p>
+      <h3>Cas le plus courant: Direct connection</h3>
+      <p>Supabase peut afficher une URL de ce type:</p>
+      <pre>postgresql://postgres:[YOUR-PASSWORD]@db.abcdefghijklmnopqrst.supabase.co:5432/postgres</pre>
+      <p>Tu gardes <code>postgres</code>, le host, le port et la base <code>postgres</code>. Tu remplaces seulement <code>[YOUR-PASSWORD]</code> par le mot de passe de la base Supabase:</p>
+      <pre>postgresql://postgres:MON_MOT_DE_PASSE_SUPABASE@db.abcdefghijklmnopqrst.supabase.co:5432/postgres</pre>
+      <h3>Cas pooler Supabase</h3>
+      <p>Supabase peut aussi fournir une URL de pooler ressemblant à ceci:</p>
+      <pre>postgresql://postgres.PROJECT_REF:[YOUR-PASSWORD]@aws-REGION.pooler.supabase.com:5432/postgres</pre>
+      <p>Dans ce cas, tu gardes aussi l'utilisateur complet <code>postgres.PROJECT_REF</code>. Là encore, tu remplaces seulement <code>[YOUR-PASSWORD]</code>.</p>
+      <p>Si ton mot de passe contient des caractères spéciaux comme <code>@</code>, <code>#</code>, <code>:</code>, <code>/</code> ou un espace, utilise idéalement l'URL copiée depuis Supabase ou encode ces caractères dans l'URL. Exemple: <code>@</code> devient <code>%40</code>.</p>
+      <p>Dans PowerShell, mets toujours l'URL entre guillemets.</p>
+    </section>
+
+    <section>
+      <h2>3. Installer les dépendances</h2>
+      <pre>pip install -r requirements.txt</pre>
+      <p>La migration utilise <code>psycopg</code>, déjà listé dans <code>requirements.txt</code>.</p>
+    </section>
+
+    <section>
+      <h2>4. Tester sans écrire</h2>
+      <pre>python scripts/migrate_sqlite_to_postgres.py --dry-run</pre>
+      <p>Le dry-run lit SQLite et affiche les volumes par table. Aucune donnée n'est écrite dans PostgreSQL.</p>
+    </section>
+
+    <section>
+      <h2>5. Exploiter l'URL Supabase pour migrer les données</h2>
+      <p>L'URL obtenue de Supabase est utilisée ici dans l'option <code>--postgres-url</code>. C'est cette commande qui copie les données de <code>data/local.db</code> vers PostgreSQL:</p>
+      <pre>python scripts/migrate_sqlite_to_postgres.py --sqlite-path data/local.db --postgres-url "postgresql://postgres:MON_MOT_DE_PASSE_SUPABASE@db.abcdefghijklmnopqrst.supabase.co:5432/postgres" --apply</pre>
+      <p>Le script crée les tables si besoin, insère les données dans l'ordre correct et ignore les lignes déjà présentes avec le même identifiant.</p>
+      <p>Après exécution, le rapport affiche les volumes SQLite, les lignes insérées, les lignes ignorées car déjà présentes, et les volumes PostgreSQL.</p>
+    </section>
+
+    <section>
+      <h2>6. Exploiter la même URL dans Streamlit Cloud</h2>
+      <p>La même URL PostgreSQL, ou l'URL pooler recommandée pour l'exécution cloud, doit ensuite être placée dans les secrets Streamlit Cloud sous le nom <code>DATABASE_URL</code>. NexStep et ses scripts utilisent ce nom de variable comme point d'entrée standard vers la base cloud.</p>
+      <p>Dans Streamlit Cloud, ouvrir <strong>App settings</strong>, puis <strong>Secrets</strong>, et ajouter:</p>
+      <pre>DATABASE_URL="postgresql://postgres:MON_MOT_DE_PASSE_SUPABASE@db.abcdefghijklmnopqrst.supabase.co:5432/postgres"
+APP_PIN_PEPPER="une-valeur-longue-et-secrete"
+APP_ENV="cloud"</pre>
+      <p>Si une URL est fournie sous la forme <code>postgresql+psycopg://...</code>, le script de migration la convertit automatiquement pour <code>psycopg</code>.</p>
+      <p>Ne pas publier ces valeurs dans Git, dans un PDF partagé ou dans une capture d'écran.</p>
+    </section>
+
+    <section>
+      <h2>7. Vérifier</h2>
+      <ul>
+        <li>Le nombre de leads PostgreSQL doit être au moins égal au nombre SQLite.</li>
+        <li>Les commentaires legacy doivent rester présents.</li>
+        <li>Un agent doit pouvoir se connecter et voir sa prochaine action.</li>
+        <li>L'admin doit voir les organisations, utilisateurs, imports et logs.</li>
+      </ul>
+    </section>
+
+    <section lang="en">
+      <h1>SQLite to PostgreSQL Migration Guide</h1>
+      <p>Copy the PostgreSQL URL from Supabase, then replace <code>[YOUR-PASSWORD]</code> with the database password. Use that completed URL in <code>--postgres-url</code> to migrate the local SQLite data. Then store the same URL, or the recommended runtime pooler URL, as <code>DATABASE_URL</code> in Streamlit Cloud secrets, together with <code>APP_PIN_PEPPER</code> and <code>APP_ENV=cloud</code>.</p>
+    </section>
+  </main>
+</body>
+</html>

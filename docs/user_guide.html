@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guide utilisateur NexStep / User Guide</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; color:#172033; background:#f6f8fb; line-height:1.55; }
+    header { background:#fff; border-bottom:1px solid #d7dee8; padding:22px 28px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+    header img:first-child { width:220px; max-height:96px; object-fit:contain; }
+    header img:last-child { width:112px; max-height:70px; object-fit:contain; opacity:.82; }
+    main { max-width:980px; margin:0 auto; padding:28px 20px 56px; }
+    section { background:#fff; border:1px solid #d7dee8; border-radius:8px; padding:22px; margin:18px 0; }
+    h1, h2, h3 { margin-top:0; }
+    h1 { font-size:30px; }
+    h2 { color:#0e7c66; font-size:22px; }
+    h3 { font-size:18px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+    .tile { background:#fbfcfd; border:1px solid #e5e7eb; border-radius:8px; padding:14px; }
+    .muted { color:#667085; }
+    .badge { display:inline-block; border-radius:999px; padding:3px 9px; font-weight:700; font-size:13px; margin:3px 4px 3px 0; }
+    .red { color:#b42318; background:#fff1f0; }
+    .yellow { color:#b7791f; background:#fff8db; }
+    .green { color:#087443; background:#e7f8ef; }
+    .blue { color:#155eef; background:#edf4ff; }
+    .gray { color:#667085; background:#f2f4f7; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="../assets/logos/nexstep_logo.png" alt="NexStep">
+    <div class="muted">NexStep by scale.ag</div>
+    <img src="../assets/logos/scaleag_logo.png" alt="scale.ag">
+  </header>
+  <main>
+    <section>
+      <h1>Guide utilisateur NexStep</h1>
+      <p>NexStep est un CRM simple: il montre le bon client, le contexte utile et la prochaine action à réaliser. L'objectif est qu'un agent sache quoi faire en quelques secondes.</p>
+    </section>
+
+    <section>
+      <h2>Connexion</h2>
+      <div class="grid">
+        <div class="tile"><strong>1. PIN entreprise</strong><br>Entre le PIN de ton entreprise.</div>
+        <div class="tile"><strong>2. PIN agent</strong><br>Entre ton PIN personnel.</div>
+        <div class="tile"><strong>3. Mot de passe</strong><br>À la première connexion, crée ton mot de passe. Ensuite, utilise-le pour te connecter.</div>
+      </div>
+      <p class="muted">Les PINs et mots de passe ne sont jamais affichés après création.</p>
+    </section>
+
+    <section>
+      <h2>🚀 Ma prochaine action</h2>
+      <p>C'est l'écran principal. Tu vois le client, l'action à faire, l'échéance, le contact, le canal et les derniers commentaires.</p>
+      <ul>
+        <li><strong>✅ Réaliser l'action</strong>: note le résultat, ajoute ton compte rendu et programme la suite.</li>
+        <li><strong>💬 Ajouter un commentaire</strong>: ajoute une information sans clôturer l'action.</li>
+        <li><strong>🔁 Transférer</strong>: saisis le PIN d'un autre agent et indique pourquoi tu transfères.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>✅ Toutes mes actions</h2>
+      <p>Cette page permet de filtrer et traiter tes actions ouvertes. Les couleurs restent les mêmes, mais les libellés sont plus parlants:</p>
+      <p>
+        <span class="badge red">Très urgent ou échue</span>
+        <span class="badge yellow">urgent</span>
+        <span class="badge green">Dans les temps</span>
+        <span class="badge blue">Encore beaucoup de temps</span>
+        <span class="badge gray">pas d'échéance</span>
+      </p>
+    </section>
+
+    <section>
+      <h2>💬 Fiche client</h2>
+      <p>La fiche client rassemble les contacts, le statut, l'étape, le score, les actions et tout l'historique. Les commentaires importés depuis Excel sont visibles et identifiés comme anciens commentaires.</p>
+    </section>
+
+    <section>
+      <h2>🗺️ Carte équipe</h2>
+      <p>La carte équipe aide à repérer les actions en retard, les agents chargés, les leads non assignés et les derniers commentaires après ouverture du détail.</p>
+    </section>
+
+    <section>
+      <h2>⚙️ Admin scale.ag</h2>
+      <p>La console admin sert à créer des entreprises, utilisateurs, liaisons entreprise-agent, PINs, imports et rapports de migration. Les mots de passe et PINs existants ne sont pas révélés.</p>
+    </section>
+
+    <section lang="en">
+      <h1>NexStep User Guide</h1>
+      <p>NexStep is a simple CRM: it shows the right customer, the useful context, and the next action to complete.</p>
+      <h2>Sign in</h2>
+      <p>Enter the company PIN, your agent PIN, then your password. On first sign-in, NexStep asks you to create that password.</p>
+      <h2>🚀 My next action</h2>
+      <p>This is the main screen. You can complete the action, add a comment without closing it, or transfer it to another agent.</p>
+      <h2>✅ All my actions</h2>
+      <p>The urgency labels are:</p>
+      <p>
+        <span class="badge red">Very urgent or overdue</span>
+        <span class="badge yellow">Urgent</span>
+        <span class="badge green">On time</span>
+        <span class="badge blue">Plenty of time left</span>
+        <span class="badge gray">No due date</span>
+      </p>
+      <h2>💬 Customer file</h2>
+      <p>The customer file shows contacts, status, stage, score, actions, full context, and comments, including legacy Excel comments.</p>
+      <h2>🗺️ Team map</h2>
+      <p>The team map helps managers spot overdue actions, unassigned leads, and useful comments after expanding agent details.</p>
+    </section>
+  </main>
+</body>
+</html>

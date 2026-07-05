@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.env
+.streamlit/secrets.toml
+data/*.db
+data/*.db-shm
+data/*.db-wal
+tmp/
+subabase_db_password.txt
