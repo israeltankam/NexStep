@@ -3,123 +3,264 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Guide utilisateur NexStep / User Guide</title>
+  <title>Guide utilisateur NexStep / NexStep User Guide</title>
   <style>
-    body { margin:0; font-family: Arial, sans-serif; color:#172033; background:#f6f8fb; line-height:1.55; }
-    header { background:#fff; border-bottom:1px solid #d7dee8; padding:22px 28px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
-    header img:first-child { width:220px; max-height:96px; object-fit:contain; }
-    header img:last-child { width:112px; max-height:70px; object-fit:contain; opacity:.82; }
-    main { max-width:980px; margin:0 auto; padding:28px 20px 56px; }
-    section { background:#fff; border:1px solid #d7dee8; border-radius:8px; padding:22px; margin:18px 0; }
-    h1, h2, h3 { margin-top:0; }
-    h1 { font-size:30px; }
-    h2 { color:#0e7c66; font-size:22px; }
-    h3 { font-size:18px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
-    .tile { background:#fbfcfd; border:1px solid #e5e7eb; border-radius:8px; padding:14px; }
-    .muted { color:#667085; }
-    .badge { display:inline-block; border-radius:999px; padding:3px 9px; font-weight:700; font-size:13px; margin:3px 4px 3px 0; }
-    .red { color:#b42318; background:#fff1f0; }
-    .yellow { color:#b7791f; background:#fff8db; }
-    .green { color:#087443; background:#e7f8ef; }
-    .blue { color:#155eef; background:#edf4ff; }
-    .gray { color:#667085; background:#f2f4f7; }
+    :root {
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d7dee8;
+      --soft: #f6f8fb;
+      --green: #087443;
+      --green-soft: #e7f8ef;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--soft);
+      font-family: Arial, sans-serif;
+      line-height: 1.58;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 28px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .nexstep-logo { width: 220px; max-height: 92px; object-fit: contain; }
+    .scaleag-logo { display: block; width: 112px; max-height: 68px; object-fit: contain; }
+    main { max-width: 920px; margin: 0 auto; padding: 26px 18px 56px; }
+    nav { margin-bottom: 18px; text-align: center; }
+    nav a {
+      display: inline-block;
+      margin: 4px;
+      padding: 8px 13px;
+      color: var(--green);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    section {
+      margin: 16px 0;
+      padding: 22px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    h1, h2, h3 { margin-top: 0; letter-spacing: 0; }
+    h1 { font-size: 30px; line-height: 1.2; }
+    h2 { color: var(--green); font-size: 22px; }
+    h3 { font-size: 17px; margin-bottom: 6px; }
+    .intro { font-size: 18px; }
+    .muted { color: var(--muted); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .step {
+      padding: 14px;
+      background: #fbfcfd;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    .number {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 8px;
+      color: #fff;
+      background: var(--green);
+      border-radius: 50%;
+      font-weight: 700;
+    }
+    .tip {
+      padding: 12px 14px;
+      background: var(--green-soft);
+      border-left: 4px solid #12b76a;
+      border-radius: 6px;
+    }
+    .badges span {
+      display: inline-block;
+      margin: 3px 4px 3px 0;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .red { color: #b42318; background: #fff1f0; }
+    .yellow { color: #8a5b0a; background: #fff8db; }
+    .green { color: #087443; background: #e7f8ef; }
+    .blue { color: #155eef; background: #edf4ff; }
+    .gray { color: #667085; background: #f2f4f7; }
+    footer { padding: 16px; color: var(--muted); text-align: center; }
+    @media (max-width: 620px) {
+      header { padding: 14px; }
+      .nexstep-logo { width: 155px; }
+      .scaleag-logo { width: 78px; }
+      main { padding: 18px 12px 40px; }
+      section { padding: 17px; }
+      h1 { font-size: 25px; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <img src="../assets/logos/nexstep_logo.png" alt="NexStep">
-    <div class="muted">NexStep by scale.ag</div>
-    <img src="../assets/logos/scaleag_logo.png" alt="scale.ag">
+    <img class="nexstep-logo" src="../assets/logos/nexstep_logo.png" alt="NexStep">
+    <a href="https://scale-ag.tech/" target="_blank" rel="noopener noreferrer" aria-label="Visiter scale.ag">
+      <img class="scaleag-logo" src="../assets/logos/scaleag_logo.png" alt="scale.ag">
+    </a>
   </header>
+
   <main>
-    <section>
-      <h1>Guide utilisateur NexStep</h1>
-      <p>NexStep est un CRM simple: il montre le bon client, le contexte utile et la prochaine action à réaliser. L'objectif est qu'un agent sache quoi faire en quelques secondes.</p>
-    </section>
+    <nav aria-label="Language">
+      <a href="#fr">Français</a>
+      <a href="#en">English</a>
+    </nav>
 
-    <section>
-      <h2>Connexion</h2>
-      <div class="grid">
-        <div class="tile"><strong>1. PIN entreprise</strong><br>Entre le PIN de ton entreprise.</div>
-        <div class="tile"><strong>2. PIN agent</strong><br>Entre ton PIN personnel.</div>
-        <div class="tile"><strong>3. Mot de passe</strong><br>À la première connexion, crée ton mot de passe. Ensuite, utilise-le pour te connecter.</div>
-      </div>
-      <p class="muted">Les PINs et mots de passe ne sont jamais affichés après création.</p>
-    </section>
+    <div id="fr" lang="fr">
+      <section>
+        <h1>NexStep, une étape à la fois</h1>
+        <p class="intro">NexStep te montre le prospect à contacter et te pose une seule question à la fois. Tu choisis une réponse, puis tu passes à l’étape suivante.</p>
+        <p class="tip"><strong>Le principe :</strong> pas besoin de connaître le fonctionnement d’un CRM. NexStep te guide jusqu’à l’enregistrement.</p>
+      </section>
 
-    <section>
-      <h2>🚀 Ma prochaine action</h2>
-      <p>C'est l'écran principal. Tu vois le client, l'action à faire, l'échéance, le contact, le canal et les derniers commentaires.</p>
-      <ul>
-        <li><strong>✅ Réaliser l'action</strong>: note le résultat, ajoute ton compte rendu et programme la suite.</li>
-        <li><strong>💬 Ajouter un commentaire</strong>: ajoute une information sans clôturer l'action.</li>
-        <li><strong>🔁 Transférer</strong>: saisis le PIN d'un autre agent et indique pourquoi tu transfères.</li>
-      </ul>
-    </section>
+      <section>
+        <h2>Connexion</h2>
+        <div class="steps">
+          <div class="step"><span class="number">1</span><h3>PIN entreprise</h3><p>Entre le PIN communiqué par ton entreprise.</p></div>
+          <div class="step"><span class="number">2</span><h3>PIN agent</h3><p>Entre ton PIN personnel.</p></div>
+          <div class="step"><span class="number">3</span><h3>Mot de passe</h3><p>À la première connexion, crée ton mot de passe. Ensuite, utilise-le normalement.</p></div>
+        </div>
+        <p class="muted">La connexion et les règles d’accès sont identiques pour les agents, responsables et administrateurs.</p>
+      </section>
 
-    <section>
-      <h2>➕ Nouveau lead</h2>
-      <p>Quand tu rencontres un nouveau prospect, utilise cette page pour créer sa fiche et ta première action en une seule fois.</p>
-      <ul>
-        <li>Indique au minimum le nom du lead.</li>
-        <li>Ajoute le contact, le téléphone, le canal ou la ville seulement si tu les as.</li>
-        <li>Programme la première action avec une échéance simple: aujourd'hui, demain, dans quelques jours, date personnalisée ou sans échéance.</li>
-      </ul>
-      <p class="muted">Après création, tu peux ouvrir directement la fiche client ou retrouver l'action dans “Toutes mes actions”.</p>
-    </section>
+      <section>
+        <h2>🚀 À faire maintenant</h2>
+        <p>NexStep choisit automatiquement l’action prioritaire. La fiche principale affiche seulement le nom du prospect, l’action, l’échéance, le contact et la dernière note utile.</p>
+        <ul>
+          <li><strong>☎ Numéro de téléphone :</strong> sur mobile, touche le numéro pour lancer l’appel.</li>
+          <li><strong>✓ C’est fait :</strong> commence le parcours d’enregistrement.</li>
+          <li><strong>→ Plus tard :</strong> met cette action de côté pendant la session et montre la suivante.</li>
+          <li><strong>Plus d’options :</strong> ajoute un commentaire, ouvre la fiche ou transfère l’action.</li>
+        </ul>
+      </section>
 
-    <section>
-      <h2>✅ Toutes mes actions</h2>
-      <p>Cette page permet de filtrer et traiter tes actions ouvertes. Les couleurs restent les mêmes, mais les libellés sont plus parlants:</p>
-      <p>
-        <span class="badge red">Très urgent ou échue</span>
-        <span class="badge yellow">urgent</span>
-        <span class="badge green">Dans les temps</span>
-        <span class="badge blue">Encore beaucoup de temps</span>
-        <span class="badge gray">pas d'échéance</span>
-      </p>
-    </section>
+      <section>
+        <h2>✅ Enregistrer le résultat</h2>
+        <div class="steps">
+          <div class="step"><span class="number">1</span><h3>Résultat</h3><p>Intéressé, à rappeler, pas disponible ou pas intéressé.</p></div>
+          <div class="step"><span class="number">2</span><h3>Suite</h3><p>Appeler, écrire sur WhatsApp, prendre rendez-vous ou ne rien programmer.</p></div>
+          <div class="step"><span class="number">3</span><h3>Date</h3><p>Aujourd’hui, demain, dans 3 jours, dans 7 jours ou une autre date.</p></div>
+          <div class="step"><span class="number">4</span><h3>Confirmation</h3><p>Vérifie le résumé, puis enregistre et passe à l’action suivante.</p></div>
+        </div>
+        <p class="tip"><strong>Les précisions sont facultatives.</strong> Ouvre « Ajouter des précisions » uniquement pour noter un compte rendu, un obstacle, une décision ou confier la suite à un autre agent.</p>
+      </section>
 
-    <section>
-      <h2>💬 Fiche client</h2>
-      <p>La fiche client rassemble les contacts, le statut, l'étape, le score, les actions et tout l'historique. Les commentaires importés depuis Excel sont visibles et identifiés comme anciens commentaires.</p>
-    </section>
+      <section>
+        <h2>➕ Ajouter un prospect</h2>
+        <p>La création suit quatre petites étapes :</p>
+        <ol>
+          <li>Indique le nom. Le contact et le téléphone sont facultatifs.</li>
+          <li>Choisis la première action : appel, WhatsApp, visite ou rendez-vous.</li>
+          <li>Choisis quand tu veux la faire.</li>
+          <li>Confirme. NexStep crée ensemble le prospect et sa première action.</li>
+        </ol>
+        <p class="muted">Ville, catégorie, contexte et note restent disponibles dans « Ajouter des précisions ».</p>
+      </section>
 
-    <section>
-      <h2>🗺️ Carte équipe</h2>
-      <p>La carte équipe aide à repérer les actions en retard, les agents chargés, les leads non assignés et les derniers commentaires après ouverture du détail.</p>
-    </section>
+      <section>
+        <h2>✅ Mes actions</h2>
+        <p>Cette vue sert à retrouver une action précise. Utilise la recherche ou le filtre d’urgence, puis touche <strong>Traiter</strong> pour ouvrir cette action dans le parcours guidé.</p>
+        <p class="badges">
+          <span class="red">Très urgent ou échue</span>
+          <span class="yellow">urgent</span>
+          <span class="green">Dans les temps</span>
+          <span class="blue">Encore beaucoup de temps</span>
+          <span class="gray">pas d’échéance</span>
+        </p>
+      </section>
 
-    <section>
-      <h2>⚙️ Admin scale.ag</h2>
-      <p>La console admin sert à créer des entreprises, utilisateurs, liaisons entreprise-agent, PINs, imports et rapports de migration. Les mots de passe et PINs existants ne sont pas révélés.</p>
-    </section>
+      <section>
+        <h2>💬 Plus</h2>
+        <p>Le menu « Plus » donne accès aux fiches prospects. Selon ton rôle, il affiche aussi la 🗺️ carte équipe ou la ⚙️ console d’administration. Ces écrans détaillés ne gênent plus le travail quotidien.</p>
+      </section>
+    </div>
 
-    <section lang="en">
-      <h1>NexStep User Guide</h1>
-      <p>NexStep is a simple CRM: it shows the right customer, the useful context, and the next action to complete.</p>
-      <h2>Sign in</h2>
-      <p>Enter the company PIN, your agent PIN, then your password. On first sign-in, NexStep asks you to create that password.</p>
-      <h2>🚀 My next action</h2>
-      <p>This is the main screen. You can complete the action, add a comment without closing it, or transfer it to another agent.</p>
-      <h2>➕ New lead</h2>
-      <p>When you meet a new prospect, use this page to create the customer file and schedule the first action in one step.</p>
-      <p>Only the lead name is required. Add contact details, city, context and due date when they are useful.</p>
-      <h2>✅ All my actions</h2>
-      <p>The urgency labels are:</p>
-      <p>
-        <span class="badge red">Very urgent or overdue</span>
-        <span class="badge yellow">Urgent</span>
-        <span class="badge green">On time</span>
-        <span class="badge blue">Plenty of time left</span>
-        <span class="badge gray">No due date</span>
-      </p>
-      <h2>💬 Customer file</h2>
-      <p>The customer file shows contacts, status, stage, score, actions, full context, and comments, including legacy Excel comments.</p>
-      <h2>🗺️ Team map</h2>
-      <p>The team map helps managers spot overdue actions, unassigned leads, and useful comments after expanding agent details.</p>
-    </section>
+    <div id="en" lang="en">
+      <section>
+        <h1>NexStep, one step at a time</h1>
+        <p class="intro">NexStep shows you which prospect to contact and asks one question at a time. Choose an answer and move to the next step.</p>
+        <p class="tip"><strong>The idea:</strong> you do not need to understand CRM terminology. NexStep guides you until everything is saved.</p>
+      </section>
+
+      <section>
+        <h2>Sign in</h2>
+        <div class="steps">
+          <div class="step"><span class="number">1</span><h3>Company PIN</h3><p>Enter the PIN provided by your company.</p></div>
+          <div class="step"><span class="number">2</span><h3>Agent PIN</h3><p>Enter your personal PIN.</p></div>
+          <div class="step"><span class="number">3</span><h3>Password</h3><p>Create it during your first sign-in, then use it normally.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>🚀 Do now</h2>
+        <p>NexStep automatically selects the priority action. The main panel only shows the prospect, the action, due date, contact and latest useful note.</p>
+        <ul>
+          <li><strong>☎ Phone number:</strong> tap it on mobile to start a call.</li>
+          <li><strong>✓ Done:</strong> start the short completion flow.</li>
+          <li><strong>→ Later:</strong> set this action aside for the current session.</li>
+          <li><strong>More options:</strong> add a comment, open the file or transfer the action.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>✅ Save the result</h2>
+        <div class="steps">
+          <div class="step"><span class="number">1</span><h3>Result</h3><p>Interested, call back, unavailable or not interested.</p></div>
+          <div class="step"><span class="number">2</span><h3>Next step</h3><p>Call, send a WhatsApp message, schedule a meeting or stop.</p></div>
+          <div class="step"><span class="number">3</span><h3>Date</h3><p>Today, tomorrow, in 3 days, in 7 days or another date.</p></div>
+          <div class="step"><span class="number">4</span><h3>Confirm</h3><p>Check the summary, save it and move to the next action.</p></div>
+        </div>
+        <p class="tip"><strong>Details are optional.</strong> Open “Add details” only when you need to record a note, obstacle, decision or assign the next step to someone else.</p>
+      </section>
+
+      <section>
+        <h2>➕ Add a prospect</h2>
+        <ol>
+          <li>Enter the name. Contact and phone are optional.</li>
+          <li>Choose the first action: call, WhatsApp, visit or meeting.</li>
+          <li>Choose when you will do it.</li>
+          <li>Confirm. NexStep creates the prospect and first action together.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>✅ My actions</h2>
+        <p>Use this view to find a specific action. Search or filter, then tap <strong>Handle</strong> to open it in the guided flow.</p>
+        <p class="badges">
+          <span class="red">Very urgent or overdue</span>
+          <span class="yellow">Urgent</span>
+          <span class="green">On time</span>
+          <span class="blue">Plenty of time left</span>
+          <span class="gray">No due date</span>
+        </p>
+      </section>
+
+      <section>
+        <h2>💬 More</h2>
+        <p>The “More” menu opens prospect files. Depending on your role, it also provides the 🗺️ team map or ⚙️ administration console.</p>
+      </section>
+    </div>
   </main>
+
+  <footer>NexStep by scale.ag</footer>
 </body>
 </html>

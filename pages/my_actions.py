@@ -47,7 +47,6 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                 f"**{action['title']}** · {action['due_date'] or '—'}",
                 unsafe_allow_html=True,
             )
-            st.caption(f"{action.get('stage_name') or '—'} · Score {action.get('score') or 0:g}")
             if action.get("latest_comment"):
                 st.info(truncate(str(action["latest_comment"]), 220))
             quick = st.text_area(t("comments.quick_add", language), key=f"comment_{action['id']}", height=80)
@@ -66,8 +65,9 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                 st.success(t("comments.saved", language))
                 st.rerun()
             if col2.button("✅ " + t("action.complete", language), key=f"complete_{action['id']}", use_container_width=True):
+                st.session_state["guided_focus_action_id"] = action["id"]
                 st.session_state["page"] = "next_action"
-                st.session_state["show_complete_form"] = True
+                st.session_state.pop("guided_action_flow", None)
                 st.rerun()
             if col3.button("💬 " + t("lead.open", language), key=f"lead_{action['id']}", use_container_width=True):
                 st.session_state["selected_lead_id"] = action["lead_id"]

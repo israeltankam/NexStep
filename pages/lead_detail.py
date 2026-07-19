@@ -77,7 +77,11 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                 conn.commit()
             st.success(t("comments.saved", language))
             st.rerun()
-    render_comments(list_comments_for_lead(conn, lead["id"]), max_preview=2000)
+    render_comments(
+        list_comments_for_lead(conn, lead["id"]),
+        max_preview=2000,
+        empty_label=t("comments.none", language),
+    )
 
     st.subheader("📋 " + t("lead.actions", language))
     actions = fetch_all(conn, "SELECT * FROM actions WHERE lead_id = ? ORDER BY created_at DESC", (lead["id"],))
@@ -92,4 +96,8 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
     st.subheader("🔎 " + t("comments.search", language))
     query = st.text_input(t("comments.search_placeholder", language))
     if query:
-        render_comments(search_comments(conn, str(session["organization_id"]), query), max_preview=260)
+        render_comments(
+            search_comments(conn, str(session["organization_id"]), query),
+            max_preview=260,
+            empty_label=t("comments.none", language),
+        )

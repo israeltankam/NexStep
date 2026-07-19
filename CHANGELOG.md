@@ -1,5 +1,17 @@
 # Journal de modifications NexStep
 
+## 2026-07-19
+
+- Remplacement de l'écran agent principal par un parcours guidé affichant une seule action et une seule décision à la fois.
+- Ajout d'une clôture en quatre étapes simples: résultat, suite, échéance et confirmation.
+- Ajout du report temporaire « Plus tard » sans modification des données, ainsi que de l'appel direct depuis un numéro de téléphone sur mobile.
+- Transformation de la création d'un lead en création guidée de prospect, avec détails facultatifs repliés.
+- Réduction de la navigation quotidienne à « À faire maintenant », « Ajouter un prospect » et « Mes actions »; les vues avancées restent sous « Plus » selon les droits existants.
+- Remplacement du jargon « lead » par « prospect » dans l'interface agent française et anglaise, sans modifier les noms de tables ni les services métier.
+- Conservation intégrale de la base de données, de la connexion Supabase/PostgreSQL, des PIN, mots de passe, rôles et accès administrateur.
+- Refonte du guide utilisateur HTML bilingue pour décrire les nouveaux parcours guidés.
+- Ajout du lien `https://scale-ag.tech/` sur le logo scale.ag dans l'application et le guide utilisateur.
+
 ## 2026-07-16
 
 - Correction critique de la persistance cloud: l'application utilise désormais réellement `DATABASE_URL` avec PostgreSQL/Supabase au lieu d'écrire systématiquement dans SQLite.

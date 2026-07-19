@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import html
 from pathlib import Path
 
 import streamlit as st
@@ -37,6 +38,50 @@ def inject_css() -> None:
         }
         .nex-muted { color: #667085; font-size: 0.92rem; }
         .nex-section-title { font-weight: 700; font-size: 1rem; margin: 0 0 8px 0; }
+        .nex-focus-card {
+            border: 1px solid #cfd8e5;
+            border-radius: 8px;
+            padding: 20px;
+            background: #ffffff;
+            box-shadow: 0 2px 5px rgba(16, 24, 40, 0.06);
+            margin: 12px 0 14px 0;
+        }
+        .nex-focus-card h2 {
+            font-size: 1.65rem;
+            line-height: 1.2;
+            margin: 12px 0 5px 0;
+            letter-spacing: 0;
+            overflow-wrap: anywhere;
+        }
+        .nex-focus-action {
+            color: #172033;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0 0 14px 0;
+            overflow-wrap: anywhere;
+        }
+        .nex-focus-meta {
+            color: #526071;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 22px;
+            font-size: 0.94rem;
+        }
+        .nex-contact-link {
+            color: #087443;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .nex-contact-link:hover { text-decoration: underline; }
+        .nex-latest-note {
+            border-left: 3px solid #12b76a;
+            background: #f2fbf6;
+            border-radius: 6px;
+            color: #344054;
+            margin: 0 0 14px 0;
+            padding: 10px 12px;
+            overflow-wrap: anywhere;
+        }
         .nex-comment {
             border-left: 3px solid #12b76a;
             padding: 8px 10px;
@@ -76,8 +121,40 @@ def inject_css() -> None:
             object-fit: contain;
             object-position: center center;
         }
-        div[data-testid="stButton"] button { border-radius: 6px; }
+        .nex-scale-logo-link {
+            display: inline-block;
+            padding: 4px 0;
+        }
+        .nex-scale-logo-link img {
+            display: block;
+            width: 110px;
+            max-height: 68px;
+            object-fit: contain;
+            object-position: left center;
+        }
+        .nex-scale-logo-link:focus-visible {
+            outline: 2px solid #087443;
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+        div[data-testid="stButton"] button {
+            border-radius: 6px;
+            min-height: 2.8rem;
+            white-space: normal;
+        }
+        div[data-testid="stFormSubmitButton"] button {
+            border-radius: 6px;
+            min-height: 2.8rem;
+            white-space: normal;
+        }
+        [data-testid="stProgress"] { margin: 4px 0 14px 0; }
         [data-testid="stSidebarNav"] { display: none; }
+        @media (max-width: 640px) {
+            .block-container { padding: 1rem 0.85rem 2rem; }
+            .nex-focus-card { padding: 16px; }
+            .nex-focus-card h2 { font-size: 1.4rem; }
+            .nex-focus-meta { display: grid; gap: 6px; }
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -115,17 +192,26 @@ def render_action_card(action: dict | object, *, urgency_label: str) -> None:
     )
 
 
-def render_comments(comments, *, max_preview: int = 220) -> None:
+def render_comments(
+    comments,
+    *,
+    max_preview: int = 220,
+    empty_label: str = "Aucun commentaire visible.",
+) -> None:
     if not comments:
-        st.caption("Aucun commentaire visible.")
+        st.caption(empty_label)
         return
     for comment in comments:
+        created_at = html.escape(str(comment["created_at"] or "")[:16])
+        author = html.escape(str(comment["author_name"] or "NexStep"))
+        badge = html.escape(comment_badge(comment))
+        body = html.escape(truncate(str(comment["body"] or ""), max_preview))
         st.markdown(
             f"""
             <div class="nex-comment">
-              <div>{urgency_badge('green', comment_badge(comment))}
-              <span class="nex-muted">{comment['created_at'][:16]} · {comment['author_name'] or 'NexStep'}</span></div>
-              <div>{truncate(comment['body'], max_preview)}</div>
+              <div>{urgency_badge('green', badge)}
+              <span class="nex-muted">{created_at} · {author}</span></div>
+              <div>{body}</div>
             </div>
             """,
             unsafe_allow_html=True,

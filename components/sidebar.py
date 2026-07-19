@@ -17,16 +17,13 @@ def render_sidebar(session: dict[str, object]) -> str:
     )
     st.sidebar.caption(f"{session['organization_name']} · {session['display_name']}")
 
+    # Routine agent work stays visible. Search, supervision and administration
+    # remain available below, but no longer compete with the next useful click.
     pages = [
         ("next_action", "🚀 " + t("nav.next_action", language)),
         ("new_lead", "➕ " + t("nav.new_lead", language)),
         ("my_actions", "✅ " + t("nav.my_actions", language)),
-        ("lead_detail", "💬 " + t("nav.lead_detail", language)),
     ]
-    if session.get("can_view_team"):
-        pages.append(("team_map", "🗺️ " + t("nav.team_map", language)))
-    if session.get("role") == "super_admin":
-        pages.append(("admin", "⚙️ " + t("nav.admin", language)))
 
     current = st.session_state.get("page", "next_action")
     keys = [key for key, _ in pages]
@@ -34,23 +31,45 @@ def render_sidebar(session: dict[str, object]) -> str:
     selected_label = st.sidebar.radio(
         t("nav.menu", language),
         labels,
-        index=keys.index(current) if current in keys else 0,
+        index=keys.index(current) if current in keys else None,
         label_visibility="collapsed",
     )
-    selected = keys[labels.index(selected_label)]
+    selected = keys[labels.index(selected_label)] if selected_label else current
+
+    with st.sidebar.expander(t("nav.more", language), expanded=False):
+        if st.button(
+            "💬 " + t("nav.lead_detail", language),
+            key="nav_lead_detail",
+            use_container_width=True,
+        ):
+            st.session_state["page"] = "lead_detail"
+            st.rerun()
+        if session.get("can_view_team") and st.button(
+            "🗺️ " + t("nav.team_map", language),
+            key="nav_team_map",
+            use_container_width=True,
+        ):
+            st.session_state["page"] = "team_map"
+            st.rerun()
+        if session.get("role") == "super_admin" and st.button(
+            "⚙️ " + t("nav.admin", language),
+            key="nav_admin",
+            use_container_width=True,
+        ):
+            st.session_state["page"] = "admin"
+            st.rerun()
 
     st.sidebar.divider()
-    language_choice = st.sidebar.selectbox(
-        t("settings.language", language),
-        ["fr", "en"],
-        index=0 if language == "fr" else 1,
-        format_func=lambda value: "Français" if value == "fr" else "English",
-    )
-    if language_choice != language:
-        st.session_state["session"]["language"] = language_choice
-        st.rerun()
-
     with st.sidebar.expander(t("help.title", language), expanded=False):
+        language_choice = st.selectbox(
+            t("settings.language", language),
+            ["fr", "en"],
+            index=0 if language == "fr" else 1,
+            format_func=lambda value: "Français" if value == "fr" else "English",
+        )
+        if language_choice != language:
+            st.session_state["session"]["language"] = language_choice
+            st.rerun()
         if USER_GUIDE_HTML.exists():
             st.download_button(
                 t("help.user_guide", language),
@@ -74,6 +93,14 @@ def render_sidebar(session: dict[str, object]) -> str:
 
     st.sidebar.write("")
     st.sidebar.write("")
-    st.sidebar.image(str(SCALEAG_LOGO), width=110)
+    st.sidebar.markdown(
+        f"""
+        <a class="nex-scale-logo-link" href="https://scale-ag.tech/"
+           target="_blank" rel="noopener noreferrer" aria-label="scale.ag">
+          <img src="{image_data_uri(SCALEAG_LOGO)}" alt="scale.ag">
+        </a>
+        """,
+        unsafe_allow_html=True,
+    )
     st.sidebar.caption("scale.ag")
     return selected

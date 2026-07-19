@@ -27,6 +27,7 @@ from services.migration_service import migrate_sqlite_to_postgres
 from services.new_lead_service import create_lead_with_first_action
 from services.seed_service import AGENT_PINS, LEGACY_COMMENTS, ensure_seed_data, seed_validation_counts
 from utils.dates import excel_serial_to_date, format_date, parse_date
+from utils.guided_flow import action_value, due_date_from_choice, outcome_value, touchpoint_value
 from utils.i18n import load_locale, t
 from utils.security import hash_password, hash_pin, pin_lookup, verify_password, verify_pin
 from utils.text import new_id, normalize_name, slugify, stable_id
@@ -545,6 +546,21 @@ def _(self):
         normalize_postgres_url("sqlite:///local.db")
 
 
+@check("guided_flow_resolves_existing_business_values")
+def _(self):
+    self.assertEqual(outcome_value("callback"), "À relancer")
+    self.assertEqual(action_value("message"), "WhatsApp")
+    self.assertIsNone(action_value("none"))
+    self.assertEqual(touchpoint_value("unknown"), "Autre")
+
+
+@check("guided_flow_builds_due_dates_without_database_changes")
+def _(self):
+    base = parse_date("2026-07-19")
+    self.assertEqual(due_date_from_choice("3", base_date=base), "2026-07-22")
+    self.assertIsNone(due_date_from_choice("none", base_date=base))
+
+
 @check("postgres_query_adapter_preserves_literals")
 def _(self):
     query = "SELECT ? AS value, '?' AS literal, \"?\" AS identifier, 'it''s ?' AS escaped"
@@ -572,9 +588,8 @@ def _(self):
 I18N_KEYS = [
     "login.company_pin",
     "nav.new_lead",
-    "new_lead.title",
-    "new_lead.success",
-    "spinner.new_lead",
+    "guided.outcome_question",
+    "guided.prospect_create",
 ]
 
 for language in ("fr", "en"):
