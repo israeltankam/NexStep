@@ -221,7 +221,9 @@ def _insert_ignore(conn: sqlite3.Connection, table: str, values: dict[str, objec
     columns = list(values.keys())
     placeholders = ", ".join("?" for _ in columns)
     conn.execute(
-        f"INSERT OR IGNORE INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+        # Supported by both modern SQLite and PostgreSQL. This preserves user
+        # changes because seed rows are inserted only when their IDs are absent.
+        f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders}) ON CONFLICT DO NOTHING",
         [values[column] for column in columns],
     )
 

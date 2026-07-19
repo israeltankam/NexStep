@@ -164,6 +164,9 @@
   "spinner.transfer": "Transferring...",
   "spinner.complete": "Closing action...",
   "spinner.new_lead": "Creating the lead and first action...",
+  "spinner.database": "Securely connecting to your data...",
+  "database.cloud_configuration_error": "The cloud database is not configured. Add DATABASE_URL and APP_ENV=cloud to Streamlit secrets, then restart the app.",
+  "database.connection_error": "Unable to connect to the cloud database. Check the Supabase URL in Streamlit secrets, then restart the app.",
   "spinner.admin": "Updating admin data...",
   "spinner.import": "Importing...",
   "spinner.migration": "Analyzing migration..."

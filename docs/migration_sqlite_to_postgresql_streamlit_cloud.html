@@ -80,28 +80,58 @@
 
     <section>
       <h2>6. Exploiter la même URL dans Streamlit Cloud</h2>
-      <p>La même URL PostgreSQL, ou l'URL pooler recommandée pour l'exécution cloud, doit ensuite être placée dans les secrets Streamlit Cloud sous le nom <code>DATABASE_URL</code>. NexStep et ses scripts utilisent ce nom de variable comme point d'entrée standard vers la base cloud.</p>
+      <p>Dans Supabase, cliquer sur <strong>Connect</strong>, choisir <strong>Session pooler</strong> et copier l'URL du port <code>5432</code>. Ce mode est adapté à une application Streamlit persistante et fonctionne sur les réseaux IPv4 de Streamlit Cloud.</p>
+      <p>Remplacer uniquement <code>[YOUR-PASSWORD]</code>, puis placer l'URL complète dans les secrets Streamlit Cloud sous le nom <code>DATABASE_URL</code>. Les trois clés ci-dessous doivent être à la racine du fichier TOML, sans section <code>[database]</code>.</p>
       <p>Dans Streamlit Cloud, ouvrir <strong>App settings</strong>, puis <strong>Secrets</strong>, et ajouter:</p>
-      <pre>DATABASE_URL="postgresql://postgres:MON_MOT_DE_PASSE_SUPABASE@db.abcdefghijklmnopqrst.supabase.co:5432/postgres"
-APP_PIN_PEPPER="une-valeur-longue-et-secrete"
+      <pre>DATABASE_URL="postgresql://postgres.PROJECT_REF:MON_MOT_DE_PASSE_SUPABASE@aws-REGION.pooler.supabase.com:5432/postgres"
+APP_PIN_PEPPER="LA_MEME_VALEUR_QUE_LORS_DE_LA_MIGRATION"
 APP_ENV="cloud"</pre>
-      <p>Si une URL est fournie sous la forme <code>postgresql+psycopg://...</code>, le script de migration la convertit automatiquement pour <code>psycopg</code>.</p>
+      <p><strong>Ne pas remplacer un <code>APP_PIN_PEPPER</code> déjà utilisé.</strong> Les recherches et vérifications de PIN dépendent de cette valeur. Si les PIN fonctionnent actuellement, conserver exactement le secret déjà présent dans Streamlit Cloud.</p>
+      <p>NexStep utilise désormais réellement cette URL à chaque exécution. En mode cloud, l'application refuse de démarrer si <code>DATABASE_URL</code> manque: elle ne peut donc plus revenir silencieusement vers le fichier SQLite éphémère.</p>
+      <p>Si une URL est fournie sous la forme <code>postgres://...</code> ou <code>postgresql+psycopg://...</code>, l'application la convertit automatiquement pour <code>psycopg</code>. Les requêtes préparées sont désactivées pour rester compatibles avec les poolers Supabase.</p>
       <p>Ne pas publier ces valeurs dans Git, dans un PDF partagé ou dans une capture d'écran.</p>
     </section>
 
     <section>
-      <h2>7. Vérifier</h2>
+      <h2>7. Fermer immédiatement l'accès public Supabase</h2>
+      <p>NexStep se connecte à PostgreSQL depuis le serveur Streamlit et n'utilise ni la clé <code>anon</code>, ni la Data API dans le navigateur. Il ne faut donc créer aucune policy publique.</p>
+      <ol>
+        <li>Dans Supabase, ouvrir <strong>SQL Editor</strong>.</li>
+        <li>Ouvrir le fichier <code>database/supabase_security.sql</code> du projet, copier son contenu dans l'éditeur et l'exécuter une fois.</li>
+        <li>Ouvrir <strong>Security Advisor</strong> et relancer l'analyse. Les 17 tables NexStep doivent avoir RLS activée.</li>
+        <li>Option de défense supplémentaire: dans l'intégration <strong>Data API</strong>, désactiver <strong>Enable Data API</strong>, puisque NexStep utilise seulement une connexion PostgreSQL privée.</li>
+      </ol>
+      <p>Le script active RLS et retire tous les droits de lecture/écriture aux rôles <code>anon</code> et <code>authenticated</code>. La connexion privée <code>postgres</code> stockée dans les secrets Streamlit continue de fonctionner côté serveur.</p>
+      <p>Contrôle automatisé facultatif, depuis un terminal où <code>DATABASE_URL</code> est déjà défini:</p>
+      <pre>python scripts/secure_supabase.py --check</pre>
+      <p>Pour appliquer le même fichier SQL depuis le terminal plutôt que depuis SQL Editor:</p>
+      <pre>python scripts/secure_supabase.py --apply</pre>
+    </section>
+
+    <section>
+      <h2>8. Vérifier la sécurité et la persistance</h2>
       <ul>
         <li>Le nombre de leads PostgreSQL doit être au moins égal au nombre SQLite.</li>
         <li>Les commentaires legacy doivent rester présents.</li>
-        <li>Un agent doit pouvoir se connecter et voir sa prochaine action.</li>
-        <li>L'admin doit voir les organisations, utilisateurs, imports et logs.</li>
+        <li>Déployer le commit corrigé, définir un mot de passe agent, puis actualiser la page: NexStep ne doit plus demander la première configuration.</li>
+        <li>Modifier une action réelle ou ajouter un lead utile, puis redémarrer l'application depuis Streamlit Cloud: la modification doit rester visible.</li>
+        <li>Dans Supabase Table Editor, la même modification doit apparaître dans <code>actions</code>, <code>leads</code> ou <code>users</code>.</li>
+        <li><code>python scripts/secure_supabase.py --check</code> doit afficher <code>OK</code> pour les 17 tables.</li>
       </ul>
     </section>
 
     <section lang="en">
       <h1>SQLite to PostgreSQL Migration Guide</h1>
-      <p>Copy the PostgreSQL URL from Supabase, then replace <code>[YOUR-PASSWORD]</code> with the database password. Use that completed URL in <code>--postgres-url</code> to migrate the local SQLite data. Then store the same URL, or the recommended runtime pooler URL, as <code>DATABASE_URL</code> in Streamlit Cloud secrets, together with <code>APP_PIN_PEPPER</code> and <code>APP_ENV=cloud</code>.</p>
+      <p>For Streamlit Cloud, copy Supabase's <strong>Session pooler</strong> URL on port <code>5432</code>, replace only <code>[YOUR-PASSWORD]</code>, and store the complete URL as the root-level <code>DATABASE_URL</code> secret. Also set <code>APP_ENV="cloud"</code> and preserve the exact <code>APP_PIN_PEPPER</code> value used during migration. Changing an existing pepper makes stored PIN lookups and hashes unusable.</p>
+      <p>NexStep now uses PostgreSQL at runtime and fails closed when cloud mode has no <code>DATABASE_URL</code>. It can no longer silently write to Streamlit Cloud's ephemeral SQLite filesystem.</p>
+      <h2>Emergency Supabase hardening</h2>
+      <ol>
+        <li>Open Supabase <strong>SQL Editor</strong>.</li>
+        <li>Run the complete <code>database/supabase_security.sql</code> file once.</li>
+        <li>Rerun <strong>Security Advisor</strong>; RLS must be enabled on all 17 NexStep tables.</li>
+        <li>Because NexStep uses a private server connection, optionally disable <strong>Enable Data API</strong> for an additional security boundary.</li>
+      </ol>
+      <p>Use <code>python scripts/secure_supabase.py --check</code> to audit RLS and public grants. After deploying, set a password or change a real action, restart the Streamlit app, and confirm that the change remains visible both in NexStep and Supabase.</p>
     </section>
   </main>
 </body>

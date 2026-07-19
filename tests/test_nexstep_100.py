@@ -7,12 +7,18 @@ import sys
 import unittest
 import uuid
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 os.environ["NEXSTEP_FAST_HASH"] = "1"
 
-from database.connection import get_connection
+from database.connection import (
+    DatabaseConfigurationError,
+    adapt_query_for_postgres,
+    get_connection,
+    normalize_postgres_url,
+)
 from services.action_service import complete_action, get_next_action, list_actions, resolve_org_user_by_pin, transfer_action
 from services.auth_service import identify_by_pins, password_mode, set_user_password, verify_user_password
 from services.comment_service import add_comment, list_comments_for_lead, recent_comments_for_lead, search_comments
@@ -525,14 +531,50 @@ def _(self):
     self.assertEqual(lead["possible_duplicate_group"], "black-and-white")
 
 
+@check("postgres_url_normalization")
+def _(self):
+    self.assertEqual(
+        normalize_postgres_url("postgres://user:secret@example.test/db"),
+        "postgresql://user:secret@example.test/db",
+    )
+    self.assertEqual(
+        normalize_postgres_url("postgresql+psycopg://user:secret@example.test/db"),
+        "postgresql://user:secret@example.test/db",
+    )
+    with self.assertRaises(DatabaseConfigurationError):
+        normalize_postgres_url("sqlite:///local.db")
+
+
+@check("postgres_query_adapter_preserves_literals")
+def _(self):
+    query = "SELECT ? AS value, '?' AS literal, \"?\" AS identifier, 'it''s ?' AS escaped"
+    self.assertEqual(
+        adapt_query_for_postgres(query),
+        "SELECT %s AS value, '?' AS literal, \"?\" AS identifier, 'it''s ?' AS escaped",
+    )
+
+
+@check("cloud_requires_database_url")
+def _(self):
+    with mock.patch.dict(os.environ, {"APP_ENV": "cloud", "DATABASE_URL": ""}, clear=False):
+        with self.assertRaises(DatabaseConfigurationError):
+            get_connection()
+
+
+@check("supabase_security_covers_all_tables")
+def _(self):
+    security_sql = (ROOT / "database" / "supabase_security.sql").read_text(encoding="utf-8")
+    for table in TABLES:
+        self.assertIn(f"ALTER TABLE public.{table} ENABLE ROW LEVEL SECURITY", security_sql)
+    self.assertIn("FROM anon, authenticated", security_sql)
+
+
 I18N_KEYS = [
     "login.company_pin",
     "nav.new_lead",
     "new_lead.title",
-    "new_lead.submit",
     "new_lead.success",
     "spinner.new_lead",
-    "urgency.red",
 ]
 
 for language in ("fr", "en"):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime as dt
 import sqlite3
 
 from database.repository import fetch_one, insert, update_by_id
@@ -47,6 +48,9 @@ def _log_attempt(
 
 
 def _recent_failures(conn: sqlite3.Connection, organization_lookup: str, agent_lookup: str) -> int:
+    # Compute the cutoff in Python so the query remains identical on SQLite and
+    # PostgreSQL instead of relying on SQLite's datetime() SQL function.
+    cutoff = (dt.datetime.now(dt.UTC) - dt.timedelta(minutes=15)).replace(microsecond=0).isoformat()
     row = fetch_one(
         conn,
         """
@@ -55,9 +59,9 @@ def _recent_failures(conn: sqlite3.Connection, organization_lookup: str, agent_l
         WHERE organization_lookup = ?
           AND agent_lookup = ?
           AND success = 0
-          AND created_at >= datetime('now', '-15 minutes')
+          AND created_at >= ?
         """,
-        (organization_lookup, agent_lookup),
+        (organization_lookup, agent_lookup, cutoff),
     )
     return int(row["count"] if row else 0)
 

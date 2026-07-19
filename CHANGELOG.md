@@ -1,5 +1,15 @@
 # Journal de modifications NexStep
 
+## 2026-07-16
+
+- Correction critique de la persistance cloud: l'application utilise désormais réellement `DATABASE_URL` avec PostgreSQL/Supabase au lieu d'écrire systématiquement dans SQLite.
+- Ajout d'un mode cloud fermé par défaut: `APP_ENV=cloud` interdit tout fallback silencieux vers le disque éphémère de Streamlit Cloud si `DATABASE_URL` manque.
+- Ajout d'un adaptateur PostgreSQL pour conserver les services existants, avec lignes dictionnaires, SSL obligatoire, délai de connexion et compatibilité avec les poolers Supabase.
+- Ajout du fichier `database/supabase_security.sql` qui active RLS sur les 17 tables et retire les privilèges Data API aux rôles `anon` et `authenticated`.
+- Ajout du script standalone `scripts/secure_supabase.py` pour contrôler ou appliquer le verrouillage Supabase sans afficher les secrets.
+- Mise à jour bilingue du guide de migration avec la procédure Session pooler, les secrets Streamlit, le correctif RLS et le test de persistance après redémarrage.
+- Mise à jour de la suite de 100 tests pour couvrir le branchement PostgreSQL et les garde-fous cloud/Supabase.
+
 ## 2026-07-05
 
 - Ajout de la page agent `Nouveau lead` pour créer un lead et sa première action en une seule opération.

@@ -164,6 +164,9 @@
   "spinner.transfer": "Transfert en cours...",
   "spinner.complete": "Clôture de l'action...",
   "spinner.new_lead": "Création du lead et de la première action...",
+  "spinner.database": "Connexion sécurisée aux données...",
+  "database.cloud_configuration_error": "La base cloud n'est pas configurée. Ajoutez DATABASE_URL et APP_ENV=cloud dans les secrets Streamlit, puis redémarrez l'application.",
+  "database.connection_error": "Connexion à la base cloud impossible. Vérifiez l'URL Supabase dans les secrets Streamlit, puis redémarrez l'application.",
   "spinner.admin": "Mise à jour admin...",
   "spinner.import": "Import en cours...",
   "spinner.migration": "Analyse de migration..."

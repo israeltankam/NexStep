@@ -7,7 +7,7 @@ import sqlite3
 import streamlit as st
 
 from components.sidebar import render_sidebar
-from database.connection import get_connection
+from database.connection import DatabaseConfigurationError, DatabaseConnectionError, get_connection
 from pages import admin, lead_detail, my_actions, new_lead, next_action, team_map
 from services.auth_service import (
     build_session_payload,
@@ -22,10 +22,23 @@ from utils.paths import NEXSTEP_LOGO, USER_GUIDE_HTML
 from utils.ui import image_data_uri, inject_css
 
 
-def _connection() -> sqlite3.Connection:
+@st.cache_resource(show_spinner=False)
+def _initialize_database() -> bool:
+    """Create/seed the active database once per Streamlit server process."""
+
     conn = get_connection()
-    ensure_seed_data(conn)
-    return conn
+    try:
+        ensure_seed_data(conn)
+    except Exception as exc:
+        raise DatabaseConnectionError("Unable to initialize PostgreSQL.") from exc
+    finally:
+        conn.close()
+    return True
+
+
+def _connection():
+    _initialize_database()
+    return get_connection()
 
 
 def _load_pending_rows(conn: sqlite3.Connection) -> tuple[sqlite3.Row, sqlite3.Row, sqlite3.Row] | None:
@@ -129,22 +142,39 @@ def render_login(conn: sqlite3.Connection) -> None:
 def main() -> None:
     st.set_page_config(page_title="NexStep by scale.ag", page_icon="🚀", layout="wide")
     inject_css()
-    conn = _connection()
-    if "session" not in st.session_state:
-        render_login(conn)
-        return
+    language = st.session_state.get("session", {}).get(
+        "language", st.session_state.get("login_language", "fr")
+    )
+    try:
+        with st.spinner(t("spinner.database", language)):
+            conn = _connection()
+    except DatabaseConfigurationError:
+        st.error(t("database.cloud_configuration_error", language))
+        st.stop()
+    except DatabaseConnectionError:
+        st.error(t("database.connection_error", language))
+        st.stop()
 
-    selected = render_sidebar(st.session_state["session"])
-    st.session_state["page"] = selected
-    routes = {
-        "next_action": next_action.render,
-        "new_lead": new_lead.render,
-        "my_actions": my_actions.render,
-        "lead_detail": lead_detail.render,
-        "team_map": team_map.render,
-        "admin": admin.render,
-    }
-    routes.get(selected, next_action.render)(conn, st.session_state["session"])
+    try:
+        if "session" not in st.session_state:
+            render_login(conn)
+            return
+
+        selected = render_sidebar(st.session_state["session"])
+        st.session_state["page"] = selected
+        routes = {
+            "next_action": next_action.render,
+            "new_lead": new_lead.render,
+            "my_actions": my_actions.render,
+            "lead_detail": lead_detail.render,
+            "team_map": team_map.render,
+            "admin": admin.render,
+        }
+        routes.get(selected, next_action.render)(conn, st.session_state["session"])
+    finally:
+        # Streamlit reruns this file after each interaction. Returning the
+        # connection promptly prevents exhausting Supabase's connection pool.
+        conn.close()
 
 
 if __name__ == "__main__":
