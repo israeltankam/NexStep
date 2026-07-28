@@ -98,7 +98,7 @@ APP_ENV="cloud"</pre>
       <ol>
         <li>Dans Supabase, ouvrir <strong>SQL Editor</strong>.</li>
         <li>Ouvrir le fichier <code>database/supabase_security.sql</code> du projet, copier son contenu dans l'éditeur et l'exécuter une fois.</li>
-        <li>Ouvrir <strong>Security Advisor</strong> et relancer l'analyse. Les 17 tables NexStep doivent avoir RLS activée.</li>
+        <li>Ouvrir <strong>Security Advisor</strong> et relancer l'analyse. Toutes les tables NexStep doivent avoir RLS activée.</li>
         <li>Option de défense supplémentaire: dans l'intégration <strong>Data API</strong>, désactiver <strong>Enable Data API</strong>, puisque NexStep utilise seulement une connexion PostgreSQL privée.</li>
       </ol>
       <p>Le script active RLS et retire tous les droits de lecture/écriture aux rôles <code>anon</code> et <code>authenticated</code>. La connexion privée <code>postgres</code> stockée dans les secrets Streamlit continue de fonctionner côté serveur.</p>
@@ -116,8 +116,34 @@ APP_ENV="cloud"</pre>
         <li>Déployer le commit corrigé, définir un mot de passe agent, puis actualiser la page: NexStep ne doit plus demander la première configuration.</li>
         <li>Modifier une action réelle ou ajouter un lead utile, puis redémarrer l'application depuis Streamlit Cloud: la modification doit rester visible.</li>
         <li>Dans Supabase Table Editor, la même modification doit apparaître dans <code>actions</code>, <code>leads</code> ou <code>users</code>.</li>
-        <li><code>python scripts/secure_supabase.py --check</code> doit afficher <code>OK</code> pour les 17 tables.</li>
+        <li><code>python scripts/secure_supabase.py --check</code> doit afficher <code>OK</code> pour toutes les tables.</li>
       </ul>
+    </section>
+
+    <section>
+      <h2>9. Mettre à jour une base NexStep déjà en production</h2>
+      <p>La mise à jour du 28 juillet 2026 ajoute seulement les tables <code>auth_sessions</code> et <code>password_reset_requests</code>. Elle ne modifie, ne vide et ne remplace aucune table existante.</p>
+      <ol>
+        <li>Avant toute opération, conserver une sauvegarde récente de la base ou une exportation des données.</li>
+        <li>Dans PowerShell, depuis le dossier NexStep, exécuter exactement les commandes ci-dessous. Quand PowerShell le demande, coller l’URL PostgreSQL complète copiée depuis Supabase, avec <code>[YOUR-PASSWORD]</code> déjà remplacé par le vrai mot de passe. La saisie reste masquée.</li>
+        <li>Lancer d’abord le contrôle. Avant la migration, l’état « MISSING OR INSECURE » est normal pour les deux nouvelles tables.</li>
+      </ol>
+      <pre>$secureUrl = Read-Host "Collez l'URL PostgreSQL Supabase complète" -AsSecureString
+$env:DATABASE_URL = [System.Net.NetworkCredential]::new("", $secureUrl).Password
+
+"URL présente : $(-not [string]::IsNullOrWhiteSpace($env:DATABASE_URL))"
+$parsedDatabaseUrl = [System.Uri]$env:DATABASE_URL
+"Host : $($parsedDatabaseUrl.Host)"
+
+python scripts/upgrade_supabase_20260728.py --check</pre>
+      <p><code>URL présente</code> doit afficher <code>True</code>. La variable <code>DATABASE_URL</code> n’existe que dans cette fenêtre PowerShell. Si la fenêtre est fermée ou si un nouveau terminal est ouvert, il faut exécuter à nouveau les deux premières commandes.</p>
+      <p>Appliquer ensuite la migration additive, puis la contrôler :</p>
+      <pre>python scripts/upgrade_supabase_20260728.py --apply
+python scripts/upgrade_supabase_20260728.py --check
+python scripts/secure_supabase.py --check</pre>
+      <p>Les trois commandes de contrôle doivent finalement afficher <code>OK</code>. Exécuter les 100 tests avant le déploiement :</p>
+      <pre>python -m unittest tests.test_nexstep_100</pre>
+      <p>Enfin, pousser le code sur la branche GitHub suivie par Streamlit Cloud. Le redéploiement utilisera les nouvelles tables déjà prêtes. Ne jamais relancer le seed initial, ne jamais supprimer les tables et ne jamais remplacer <code>APP_PIN_PEPPER</code>.</p>
     </section>
 
     <section lang="en">
@@ -128,10 +154,18 @@ APP_ENV="cloud"</pre>
       <ol>
         <li>Open Supabase <strong>SQL Editor</strong>.</li>
         <li>Run the complete <code>database/supabase_security.sql</code> file once.</li>
-        <li>Rerun <strong>Security Advisor</strong>; RLS must be enabled on all 17 NexStep tables.</li>
+        <li>Rerun <strong>Security Advisor</strong>; RLS must be enabled on every NexStep table.</li>
         <li>Because NexStep uses a private server connection, optionally disable <strong>Enable Data API</strong> for an additional security boundary.</li>
       </ol>
       <p>Use <code>python scripts/secure_supabase.py --check</code> to audit RLS and public grants. After deploying, set a password or change a real action, restart the Streamlit app, and confirm that the change remains visible both in NexStep and Supabase.</p>
+      <h2>Updating an existing production database</h2>
+      <p>The 2026-07-28 upgrade only creates <code>auth_sessions</code> and <code>password_reset_requests</code>. It never updates, deletes or replaces existing rows.</p>
+      <pre>python scripts/upgrade_supabase_20260728.py --check
+python scripts/upgrade_supabase_20260728.py --apply
+python scripts/upgrade_supabase_20260728.py --check
+python scripts/secure_supabase.py --check
+python -m unittest tests.test_nexstep_100</pre>
+      <p>After all checks pass, push the code to the GitHub branch used by Streamlit Cloud. Never rerun the initial seed, drop production tables or change the existing <code>APP_PIN_PEPPER</code>.</p>
     </section>
   </main>
 </body>

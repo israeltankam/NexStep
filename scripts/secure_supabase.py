@@ -43,6 +43,8 @@ NEXSTEP_TABLES = (
     "import_rows",
     "auth_attempts",
     "audit_logs",
+    "auth_sessions",
+    "password_reset_requests",
 )
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Audit or secure NexStep tables on Supabase.")

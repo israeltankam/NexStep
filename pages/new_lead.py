@@ -21,8 +21,7 @@ def _new_flow() -> dict[str, object]:
     return {
         "step": "identity",
         "name": "",
-        "contact_name": "",
-        "phone": "",
+        "contacts": [],
         "action": None,
         "due": None,
     }
@@ -61,17 +60,56 @@ def _identity_step(flow: dict[str, object], language: str) -> None:
     render_progress(1, 4, language)
     st.subheader(t("guided.prospect_identity_question", language))
     st.caption(t("guided.prospect_identity_hint", language))
+    existing_contacts = list(flow.get("contacts") or [])
+    default_count = len(existing_contacts) if existing_contacts else 1
+    contact_count = st.selectbox(
+        t("new_lead.contact_count", language),
+        list(range(6)),
+        index=default_count,
+        format_func=lambda count: t("new_lead.contact_count_value", language, count=count),
+    )
     with st.form("guided_prospect_identity"):
         name = st.text_input(t("new_lead.name", language), value=str(flow.get("name") or ""))
-        col_contact, col_phone = st.columns(2)
-        contact_name = col_contact.text_input(
-            t("new_lead.contact_name", language),
-            value=str(flow.get("contact_name") or ""),
-        )
-        phone = col_phone.text_input(
-            t("new_lead.phone", language),
-            value=str(flow.get("phone") or ""),
-        )
+        contacts: list[dict[str, str]] = []
+        for index in range(contact_count):
+            saved = existing_contacts[index] if index < len(existing_contacts) else {}
+            st.markdown(f"**{t('new_lead.contact_number', language, number=index + 1)}**")
+            name_col, role_col = st.columns(2)
+            contact_name = name_col.text_input(
+                t("new_lead.contact_name", language),
+                value=str(saved.get("full_name") or ""),
+                key=f"new_contact_name_{index}",
+            )
+            role_title = role_col.text_input(
+                t("new_lead.contact_role", language),
+                value=str(saved.get("role_title") or ""),
+                key=f"new_contact_role_{index}",
+            )
+            phone_col, email_col, whatsapp_col = st.columns(3)
+            phone = phone_col.text_input(
+                t("new_lead.phone", language),
+                value=str(saved.get("phone_raw") or ""),
+                key=f"new_contact_phone_{index}",
+            )
+            email = email_col.text_input(
+                t("new_lead.email", language),
+                value=str(saved.get("email") or ""),
+                key=f"new_contact_email_{index}",
+            )
+            whatsapp = whatsapp_col.text_input(
+                "WhatsApp",
+                value=str(saved.get("whatsapp") or ""),
+                key=f"new_contact_whatsapp_{index}",
+            )
+            contacts.append(
+                {
+                    "full_name": contact_name.strip(),
+                    "role_title": role_title.strip(),
+                    "phone_raw": phone.strip(),
+                    "email": email.strip(),
+                    "whatsapp": whatsapp.strip(),
+                }
+            )
         submitted = st.form_submit_button(
             t("guided.continue", language),
             type="primary",
@@ -85,8 +123,7 @@ def _identity_step(flow: dict[str, object], language: str) -> None:
     flow.update(
         {
             "name": name.strip(),
-            "contact_name": contact_name.strip(),
-            "phone": phone.strip(),
+            "contacts": contacts,
             "step": "action",
         }
     )
@@ -201,8 +238,7 @@ def _confirmation_step(
                 actor_org_user_id=str(session["org_user_id"]),
                 lead_name=str(flow["name"]),
                 category_name=category_name or None,
-                contact_name=str(flow.get("contact_name") or ""),
-                phone_raw=str(flow.get("phone") or ""),
+                contacts=list(flow.get("contacts") or []),
                 channel_notes=channel_notes,
                 city=city,
                 context_note=context_note,

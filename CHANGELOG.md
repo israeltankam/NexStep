@@ -1,5 +1,19 @@
 # Journal de modifications NexStep
 
+## 2026-07-28
+
+- Remplacement des fiches prospects techniques et de la carte équipe par un Lead Board unique, filtrable et sélectionnable, avec contacts, actions et commentaires en langage utilisateur.
+- Suppression du menu « Plus » devenu inutile; l’administration apparaît directement pour les rôles autorisés.
+- Ajout du récapitulatif de tous les membres de l’entreprise et du filtre multi-agents selon les droits existants.
+- Ajout de l’export Excel du Lead Board filtré pour chaque agent.
+- Extension de la création guidée à cinq contacts par prospect, sans changement du schéma des contacts.
+- Ajout des liens Google Agenda et des fichiers ICS avec rappel un jour avant l’échéance.
+- Ajout de fichiers d’accès personnels révocables, sans PIN ni mot de passe, la couche native de cookies Streamlit étant en lecture seule.
+- Ajout du workflow de réinitialisation de mot de passe approuvé ou refusé dans l’application par un administrateur d’entreprise.
+- Ajout d’une archive ZIP de CSV pour exporter et remplacer atomiquement les données métier d’une entreprise, avec trois confirmations du PIN entreprise et une confirmation du mot de passe administrateur.
+- Ajout d’une migration Supabase strictement additive pour `auth_sessions` et `password_reset_requests`, avec RLS et retrait des droits publics.
+- Mise à jour des catalogues FR/EN, du guide utilisateur bilingue, du guide de migration et des 100 tests automatisés.
+
 ## 2026-07-19
 
 - Remplacement de l'écran agent principal par un parcours guidé affichant une seule action et une seule décision à la fois.

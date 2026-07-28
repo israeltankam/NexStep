@@ -6,6 +6,7 @@ import sqlite3
 
 import streamlit as st
 
+from components.calendar_tools import render_calendar_tools
 from components.guided import (
     render_action_focus,
     render_choice_grid,
@@ -263,6 +264,12 @@ def _render_more_options(
     language: str,
 ) -> None:
     with st.expander(t("guided.more_options", language), expanded=False):
+        render_calendar_tools(
+            action,
+            language,
+            lead_name=str(action.get("lead_name") or ""),
+            key_prefix=f"next_action_{action['id']}",
+        )
         with st.form(f"quick_comment_{action['id']}"):
             body = st.text_area(t("comments.quick_add", language), height=80)
             if st.form_submit_button("💬 " + t("comments.save", language), use_container_width=True):
@@ -282,7 +289,7 @@ def _render_more_options(
 
         if st.button("💬 " + t("lead.open", language), key=f"open_lead_{action['id']}"):
             st.session_state["selected_lead_id"] = action["lead_id"]
-            st.session_state["page"] = "lead_detail"
+            st.session_state["page"] = "lead_board"
             st.rerun()
 
         st.markdown(f"**{t('transfer.title', language)}**")

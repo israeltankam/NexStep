@@ -8,7 +8,7 @@ import streamlit as st
 
 from components.sidebar import render_sidebar
 from database.connection import DatabaseConfigurationError, DatabaseConnectionError, get_connection
-from pages import admin, lead_detail, my_actions, new_lead, next_action, team_map
+from pages import admin, lead_board, my_actions, new_lead, next_action
 from services.auth_service import (
     build_session_payload,
     identify_by_pins,
@@ -16,6 +16,8 @@ from services.auth_service import (
     set_user_password,
     verify_user_password,
 )
+from services.access_service import authenticate_quick_access
+from services.password_reset_service import request_password_reset
 from services.seed_service import ensure_seed_data
 from utils.i18n import t
 from utils.paths import NEXSTEP_LOGO, USER_GUIDE_HTML
@@ -54,8 +56,16 @@ def _load_pending_rows(conn: sqlite3.Connection) -> tuple[sqlite3.Row, sqlite3.R
     return None
 
 
-def _finish_login(organization: sqlite3.Row, user: sqlite3.Row, org_user: sqlite3.Row) -> None:
+def _finish_login(
+    organization: sqlite3.Row,
+    user: sqlite3.Row,
+    org_user: sqlite3.Row,
+    *,
+    quick_access_session_id: str | None = None,
+) -> None:
     st.session_state["session"] = build_session_payload(organization, user, org_user)
+    if quick_access_session_id:
+        st.session_state["session"]["quick_access_session_id"] = quick_access_session_id
     st.session_state.pop("pending_auth", None)
     st.session_state["page"] = "admin" if org_user["role"] == "super_admin" else "next_action"
     st.rerun()
@@ -87,6 +97,36 @@ def render_login(conn: sqlite3.Connection) -> None:
 
     pending_rows = _load_pending_rows(conn)
     if not pending_rows:
+        with st.expander(t("quick_access.login_title", language), expanded=False):
+            access_file = st.file_uploader(
+                t("quick_access.upload", language),
+                type=["nexstep"],
+                key="quick_access_upload",
+            )
+            if access_file and st.button(
+                t("quick_access.open", language),
+                key="quick_access_open",
+                use_container_width=True,
+            ):
+                with st.spinner(t("spinner.login", language)):
+                    access_result = authenticate_quick_access(conn, access_file.getvalue())
+                if not access_result.ok:
+                    st.error(t(access_result.message_key, language))
+                elif password_mode(access_result.user) != "login":
+                    st.session_state["pending_auth"] = {
+                        "organization_id": access_result.organization["id"],
+                        "user_id": access_result.user["id"],
+                        "org_user_id": access_result.org_user["id"],
+                    }
+                    st.rerun()
+                else:
+                    _finish_login(
+                        access_result.organization,
+                        access_result.user,
+                        access_result.org_user,
+                        quick_access_session_id=access_result.session_id,
+                    )
+
         with st.form("pin_login"):
             company_pin = st.text_input(t("login.company_pin", language), type="password")
             agent_pin = st.text_input(t("login.agent_pin", language), type="password")
@@ -138,6 +178,21 @@ def render_login(conn: sqlite3.Connection) -> None:
                 refreshed_user = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
                 _finish_login(organization, refreshed_user, org_user)
 
+    if mode == "login" and st.button(
+        t("password_reset.request", language),
+        key="request_password_reset",
+        use_container_width=True,
+    ):
+        with st.spinner(t("password_reset.request_spinner", language)):
+            request_password_reset(
+                conn,
+                organization_id=str(organization["id"]),
+                user_id=str(user["id"]),
+                org_user_id=str(org_user["id"]),
+            )
+        st.session_state.pop("pending_auth", None)
+        st.success(t("password_reset.requested", language))
+
 
 def main() -> None:
     st.set_page_config(page_title="NexStep by scale.ag", page_icon="🚀", layout="wide")
@@ -160,14 +215,16 @@ def main() -> None:
             render_login(conn)
             return
 
-        selected = render_sidebar(st.session_state["session"])
+        selected = render_sidebar(conn, st.session_state["session"])
         st.session_state["page"] = selected
         routes = {
             "next_action": next_action.render,
             "new_lead": new_lead.render,
             "my_actions": my_actions.render,
-            "lead_detail": lead_detail.render,
-            "team_map": team_map.render,
+            "lead_board": lead_board.render,
+            # Preserve old in-app destinations while consolidating both views.
+            "lead_detail": lead_board.render,
+            "team_map": lead_board.render,
             "admin": admin.render,
         }
         routes.get(selected, next_action.render)(conn, st.session_state["session"])

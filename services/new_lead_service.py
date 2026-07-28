@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from collections.abc import Mapping, Sequence
 
 from database.connection import transaction
 from database.repository import fetch_one, insert
@@ -99,13 +100,14 @@ def create_lead_with_first_action(
     contact_name: str = "",
     phone_raw: str = "",
     channel_notes: str = "",
+    contacts: Sequence[Mapping[str, object]] | None = None,
     city: str = "",
     context_note: str = "",
     action_type_name: str | None = "Appel",
     action_title: str | None = None,
     due_date: str | None = None,
     action_details: str = "",
-) -> dict[str, str | None]:
+) -> dict[str, object]:
     """Create a lead owned by the current agent and queue its first action."""
 
     cleaned_name = lead_name.strip()
@@ -114,8 +116,15 @@ def create_lead_with_first_action(
 
     now = utcnow_iso()
     normalized = normalize_name(cleaned_name)
-    contact_id = None
+    contact_ids: list[str] = []
     comment_id = None
+    supplied_contacts = list(contacts) if contacts is not None else [
+        {
+            "full_name": contact_name,
+            "phone_raw": phone_raw,
+            "channel_notes": channel_notes,
+        }
+    ]
 
     with transaction(conn):
         lead_id = new_id()
@@ -163,22 +172,39 @@ def create_lead_with_first_action(
             },
         )
 
-        if contact_name.strip() or phone_raw.strip() or channel_notes.strip():
+        for contact_index, supplied_contact in enumerate(supplied_contacts):
+            contact = {
+                key: str(supplied_contact.get(key) or "").strip()
+                for key in (
+                    "full_name",
+                    "role_title",
+                    "phone_raw",
+                    "email",
+                    "whatsapp",
+                    "channel_notes",
+                )
+            }
+            if contact_index == 0 and channel_notes.strip() and not contact["channel_notes"]:
+                contact["channel_notes"] = channel_notes.strip()
+            if not any(contact.values()):
+                continue
+
             contact_id = new_id()
+            contact_ids.append(contact_id)
             insert(
                 conn,
                 "contacts",
                 {
                     "id": contact_id,
                     "lead_id": lead_id,
-                    "full_name": contact_name.strip() or None,
-                    "role_title": None,
-                    "phone_raw": phone_raw.strip() or None,
-                    "phone_normalized": _digits_only(phone_raw),
-                    "email": None,
-                    "whatsapp": None,
-                    "channel_notes": channel_notes.strip() or None,
-                    "is_primary": 1,
+                    "full_name": contact["full_name"] or None,
+                    "role_title": contact["role_title"] or None,
+                    "phone_raw": contact["phone_raw"] or None,
+                    "phone_normalized": _digits_only(contact["phone_raw"]),
+                    "email": contact["email"] or None,
+                    "whatsapp": contact["whatsapp"] or None,
+                    "channel_notes": contact["channel_notes"] or None,
+                    "is_primary": 1 if len(contact_ids) == 1 else 0,
                     "created_at": now,
                     "updated_at": now,
                 },
@@ -222,4 +248,10 @@ def create_lead_with_first_action(
                 source="manual",
             )
 
-    return {"lead_id": lead_id, "action_id": action_id, "contact_id": contact_id, "comment_id": comment_id}
+    return {
+        "lead_id": lead_id,
+        "action_id": action_id,
+        "contact_id": contact_ids[0] if contact_ids else None,
+        "contact_ids": contact_ids,
+        "comment_id": comment_id,
+    }

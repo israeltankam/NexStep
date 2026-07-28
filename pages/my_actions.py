@@ -6,6 +6,7 @@ import sqlite3
 
 import streamlit as st
 
+from components.calendar_tools import render_calendar_tools
 from services.action_service import list_actions
 from services.comment_service import add_comment
 from utils.i18n import t
@@ -49,6 +50,12 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
             )
             if action.get("latest_comment"):
                 st.info(truncate(str(action["latest_comment"]), 220))
+            render_calendar_tools(
+                action,
+                language,
+                lead_name=str(action["lead_name"]),
+                key_prefix=f"my_actions_{action['id']}",
+            )
             quick = st.text_area(t("comments.quick_add", language), key=f"comment_{action['id']}", height=80)
             col1, col2, col3 = st.columns(3)
             if col1.button("💬 " + t("comments.save", language), key=f"save_{action['id']}", use_container_width=True):
@@ -71,5 +78,5 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                 st.rerun()
             if col3.button("💬 " + t("lead.open", language), key=f"lead_{action['id']}", use_container_width=True):
                 st.session_state["selected_lead_id"] = action["lead_id"]
-                st.session_state["page"] = "lead_detail"
+                st.session_state["page"] = "lead_board"
                 st.rerun()

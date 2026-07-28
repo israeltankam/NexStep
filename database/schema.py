@@ -319,6 +319,38 @@ SCHEMA_STATEMENTS = [
         FOREIGN KEY (actor_org_user_id) REFERENCES organization_users(id)
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+        id TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        org_user_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_used_at TEXT,
+        revoked_at TEXT,
+        FOREIGN KEY (organization_id) REFERENCES organizations(id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (org_user_id) REFERENCES organization_users(id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS password_reset_requests (
+        id TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        org_user_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        requested_at TEXT NOT NULL,
+        reviewed_at TEXT,
+        reviewed_by_user_id TEXT,
+        FOREIGN KEY (organization_id) REFERENCES organizations(id),
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (org_user_id) REFERENCES organization_users(id),
+        FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id)
+    )
+    """,
 ]
 
 INDEX_STATEMENTS = [
@@ -332,6 +364,10 @@ INDEX_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_import_rows_batch ON import_rows(import_batch_id)",
     "CREATE INDEX IF NOT EXISTS idx_comments_lead_created ON comments(lead_id, created_at)",
     "CREATE INDEX IF NOT EXISTS idx_comments_body ON comments(body)",
+    "CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token_hash)",
+    "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_active ON auth_sessions(org_user_id, revoked_at, expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_password_resets_org_status ON password_reset_requests(organization_id, status, requested_at)",
+    "CREATE INDEX IF NOT EXISTS idx_password_resets_user_status ON password_reset_requests(user_id, status)",
 ]
 
 

@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import streamlit as st
 
+from services.access_service import create_quick_access_file, revoke_quick_access
 from utils.i18n import t
 from utils.paths import MIGRATION_GUIDE_HTML, NEXSTEP_LOGO, SCALEAG_LOGO, USER_GUIDE_HTML
 from utils.ui import image_data_uri
 
 
-def render_sidebar(session: dict[str, object]) -> str:
+def render_sidebar(conn: sqlite3.Connection, session: dict[str, object]) -> str:
     language = str(session.get("language", "fr"))
     st.sidebar.markdown(
         f"<div class='nex-sidebar-logo'><img src='{image_data_uri(NEXSTEP_LOGO)}' alt='NexStep'></div>",
@@ -17,13 +20,15 @@ def render_sidebar(session: dict[str, object]) -> str:
     )
     st.sidebar.caption(f"{session['organization_name']} · {session['display_name']}")
 
-    # Routine agent work stays visible. Search, supervision and administration
-    # remain available below, but no longer compete with the next useful click.
+    # Keep every useful destination directly reachable from the navigation.
     pages = [
         ("next_action", "🚀 " + t("nav.next_action", language)),
         ("new_lead", "➕ " + t("nav.new_lead", language)),
+        ("lead_board", "📊 " + t("nav.lead_board", language)),
         ("my_actions", "✅ " + t("nav.my_actions", language)),
     ]
+    if session.get("role") in {"super_admin", "company_admin"}:
+        pages.append(("admin", "⚙️ " + t("nav.admin", language)))
 
     current = st.session_state.get("page", "next_action")
     keys = [key for key, _ in pages]
@@ -35,29 +40,6 @@ def render_sidebar(session: dict[str, object]) -> str:
         label_visibility="collapsed",
     )
     selected = keys[labels.index(selected_label)] if selected_label else current
-
-    with st.sidebar.expander(t("nav.more", language), expanded=False):
-        if st.button(
-            "💬 " + t("nav.lead_detail", language),
-            key="nav_lead_detail",
-            use_container_width=True,
-        ):
-            st.session_state["page"] = "lead_detail"
-            st.rerun()
-        if session.get("can_view_team") and st.button(
-            "🗺️ " + t("nav.team_map", language),
-            key="nav_team_map",
-            use_container_width=True,
-        ):
-            st.session_state["page"] = "team_map"
-            st.rerun()
-        if session.get("role") == "super_admin" and st.button(
-            "⚙️ " + t("nav.admin", language),
-            key="nav_admin",
-            use_container_width=True,
-        ):
-            st.session_state["page"] = "admin"
-            st.rerun()
 
     st.sidebar.divider()
     with st.sidebar.expander(t("help.title", language), expanded=False):
@@ -86,6 +68,43 @@ def render_sidebar(session: dict[str, object]) -> str:
                 mime="text/html",
                 use_container_width=True,
             )
+        st.divider()
+        st.caption(t("quick_access.sidebar_hint", language))
+        if st.button(
+            t("quick_access.create", language),
+            key="quick_access_create",
+            use_container_width=True,
+        ):
+            with st.spinner(t("quick_access.creating", language)):
+                session_id, file_bytes = create_quick_access_file(
+                    conn,
+                    organization_id=str(session["organization_id"]),
+                    user_id=str(session["user_id"]),
+                    org_user_id=str(session["org_user_id"]),
+                )
+            session["quick_access_session_id"] = session_id
+            st.session_state["quick_access_download"] = file_bytes
+        if file_bytes := st.session_state.get("quick_access_download"):
+            st.download_button(
+                t("quick_access.download", language),
+                file_bytes,
+                file_name="acces_nexstep.nexstep",
+                mime="application/json",
+                use_container_width=True,
+            )
+        if session.get("quick_access_session_id") and st.button(
+            t("quick_access.revoke", language),
+            key="quick_access_revoke",
+            use_container_width=True,
+        ):
+            revoke_quick_access(
+                conn,
+                session_id=str(session["quick_access_session_id"]),
+                org_user_id=str(session["org_user_id"]),
+            )
+            session.pop("quick_access_session_id", None)
+            st.session_state.pop("quick_access_download", None)
+            st.success(t("quick_access.revoked", language))
 
     if st.sidebar.button(t("login.logout", language), use_container_width=True):
         st.session_state.clear()

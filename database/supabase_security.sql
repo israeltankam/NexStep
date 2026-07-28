@@ -22,6 +22,8 @@ ALTER TABLE public.import_batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.import_rows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.auth_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auth_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.password_reset_requests ENABLE ROW LEVEL SECURITY;
 
 -- Remove the grants inherited by tables created outside Supabase Table Editor.
 -- No permissive RLS policy is created because NexStep never queries these
@@ -43,7 +45,9 @@ REVOKE ALL PRIVILEGES ON TABLE
     public.import_batches,
     public.import_rows,
     public.auth_attempts,
-    public.audit_logs
+    public.audit_logs,
+    public.auth_sessions,
+    public.password_reset_requests
 FROM anon, authenticated;
 
 -- Tables created later by the postgres owner also start without public grants.

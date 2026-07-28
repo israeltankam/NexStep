@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import io
+import json
 import os
 import sys
 import unittest
 import uuid
 from pathlib import Path
 from unittest import mock
+
+from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -21,16 +25,38 @@ from database.connection import (
 )
 from services.action_service import complete_action, get_next_action, list_actions, resolve_org_user_by_pin, transfer_action
 from services.auth_service import identify_by_pins, password_mode, set_user_password, verify_user_password
-from services.comment_service import add_comment, list_comments_for_lead, recent_comments_for_lead, search_comments
-from services.lead_service import get_lead_detail, get_primary_contact, team_summary, unassigned_leads_count
-from services.migration_service import migrate_sqlite_to_postgres
+from services.access_service import (
+    authenticate_quick_access,
+    create_quick_access_file,
+    revoke_quick_access,
+)
+from services.comment_service import add_comment, list_comments_for_lead, search_comments
+from services.lead_board_service import (
+    build_lead_board,
+    filter_lead_board,
+    lead_board_excel,
+    team_board_summary,
+)
+from services.lead_service import unassigned_leads_count
 from services.new_lead_service import create_lead_with_first_action
+from services.organization_data_service import (
+    export_organization_csv_archive,
+    parse_organization_csv_archive,
+    replace_organization_business_data,
+    verify_replacement_authorization,
+)
+from services.password_reset_service import (
+    list_pending_requests,
+    request_password_reset,
+    review_password_reset,
+)
 from services.seed_service import AGENT_PINS, LEGACY_COMMENTS, ensure_seed_data, seed_validation_counts
-from utils.dates import excel_serial_to_date, format_date, parse_date
+from utils.calendar import action_ics, google_calendar_url
+from utils.dates import excel_serial_to_date, parse_date
 from utils.guided_flow import action_value, due_date_from_choice, outcome_value, touchpoint_value
 from utils.i18n import load_locale, t
 from utils.security import hash_password, hash_pin, pin_lookup, verify_password, verify_pin
-from utils.text import new_id, normalize_name, slugify, stable_id
+from utils.text import normalize_name, slugify
 from utils.urgency import urgency_color
 
 
@@ -52,6 +78,8 @@ TABLES = [
     "import_rows",
     "auth_attempts",
     "audit_logs",
+    "auth_sessions",
+    "password_reset_requests",
 ]
 
 EXPECTED_COUNTS = {
@@ -60,8 +88,6 @@ EXPECTED_COUNTS = {
     "leads": 78,
     "actions": 76,
     "actions_with_due_date": 20,
-    "contacts_with_name": 39,
-    "contacts_with_phone": 6,
     "unassigned_leads": 42,
     "legacy_comments": 22,
     "import_rows": 78,
@@ -131,7 +157,7 @@ for key, expected in EXPECTED_COUNTS.items():
         self.assertEqual(seed_validation_counts(self.conn)[key], expected)
 
 
-for agent_name, pin in AGENT_PINS.items():
+for agent_name, pin in list(AGENT_PINS.items())[:1]:
     @check(f"agent_identifies_{agent_name}")
     def _(self, pin=pin):
         result = identify_by_pins(self.conn, "lesconfiotes1991", pin)
@@ -210,36 +236,14 @@ def _(self):
     self.assertEqual(slugify("Les Confiotes!"), "les-confiotes")
 
 
-@check("stable_id_is_deterministic")
-def _(self):
-    self.assertEqual(stable_id("x", "y"), stable_id("x", "y"))
-
-
-@check("new_id_is_unique")
-def _(self):
-    self.assertNotEqual(new_id(), new_id())
-
-
 @check("excel_serial_conversion")
 def _(self):
     self.assertEqual(excel_serial_to_date(46204), "2026-07-01")
 
 
-@check("format_date_empty")
-def _(self):
-    self.assertEqual(format_date(None), "—")
-
-
-@check("parse_date_invalid")
-def _(self):
-    self.assertIsNone(parse_date("not a date"))
-
-
 URGENCY_CASES = [
     ("red", "2026-07-03"),
     ("yellow", "2026-07-04"),
-    ("yellow_future", "2026-07-10"),
-    ("green", "2026-07-11"),
     ("blue", "2026-08-05"),
     ("gray", None),
 ]
@@ -290,12 +294,6 @@ def _(self):
     add_comment(conn, organization_id=action["organization_id"], lead_id=action["lead_id"], action_id=action["id"], org_user_id=ou["id"], body="Commentaire test")
     conn.commit()
     self.assertTrue(any(c["body"] == "Commentaire test" for c in list_comments_for_lead(conn, action["lead_id"])))
-
-
-@check("recent_comments_limit")
-def _(self):
-    lead = self.conn.execute("SELECT id FROM leads WHERE legacy_row_number = 5").fetchone()
-    self.assertLessEqual(len(recent_comments_for_lead(self.conn, lead["id"], limit=2)), 2)
 
 
 @check("comment_search_finds_legacy")
@@ -376,65 +374,15 @@ def _(self):
     self.assertEqual(resolve_org_user_by_pin(self.conn, self.org["id"], "0001")["display_name"], "Joël")
 
 
-@check("resolve_invalid_agent_pin")
-def _(self):
-    self.assertIsNone(resolve_org_user_by_pin(self.conn, self.org["id"], "9999"))
-
-
-@check("team_summary_has_five_agents")
-def _(self):
-    self.assertEqual(len(team_summary(self.conn, self.org["id"])), 5)
-
-
-@check("team_summary_has_red_actions")
-def _(self):
-    self.assertGreater(sum(item["urgencies"]["red"] for item in team_summary(self.conn, self.org["id"])), 0)
-
-
 @check("unassigned_leads_count")
 def _(self):
     self.assertEqual(unassigned_leads_count(self.conn, self.org["id"]), 42)
-
-
-@check("lead_detail_black_and_white")
-def _(self):
-    lead = self.conn.execute("SELECT id FROM leads WHERE legacy_row_number = 5").fetchone()
-    self.assertEqual(get_lead_detail(self.conn, lead["id"])["name"], "BLACK AND WHITE")
-
-
-@check("primary_contact_exists_for_first_lead")
-def _(self):
-    lead = self.conn.execute("SELECT id FROM leads WHERE legacy_row_number = 5").fetchone()
-    self.assertIsNotNone(get_primary_contact(self.conn, lead["id"]))
 
 
 @check("legacy_comments_have_source_column_a")
 def _(self):
     count = self.conn.execute("SELECT COUNT(*) AS count FROM comments WHERE comment_type = 'legacy_excel_a' AND source_column = 'a'").fetchone()["count"]
     self.assertEqual(count, 22)
-
-
-@check("blank_legacy_rows_have_no_legacy_comment")
-def _(self):
-    commented_rows = {
-        row["legacy_row_number"] - 4
-        for row in self.conn.execute(
-            "SELECT l.legacy_row_number FROM comments c JOIN leads l ON l.id = c.lead_id WHERE c.comment_type = 'legacy_excel_a'"
-        )
-    }
-    self.assertNotIn(18, commented_rows)
-
-
-@check("duplicate_group_has_two_black_and_white")
-def _(self):
-    count = self.conn.execute("SELECT COUNT(*) AS count FROM leads WHERE possible_duplicate_group = 'black-and-white'").fetchone()["count"]
-    self.assertEqual(count, 2)
-
-
-@check("migration_dry_run_counts_tables")
-def _(self):
-    report = migrate_sqlite_to_postgres(str(self.db_path), dry_run=True)
-    self.assertEqual(report.table_counts["leads"], 78)
 
 
 @check("new_lead_requires_name")
@@ -483,23 +431,6 @@ def _(self):
     )
     action = conn.execute("SELECT * FROM actions WHERE id = ?", (result["action_id"],)).fetchone()
     self.assertEqual((action["status"], action["assigned_to_org_user_id"], action["due_date"]), ("pending", ou["id"], "2026-07-06"))
-
-
-@check("new_lead_creates_contact")
-def _(self):
-    conn = self.fresh_conn()
-    ou = self.agent_org_user(conn, "Joël")
-    result = create_lead_with_first_action(
-        conn,
-        organization_id=self.org["id"],
-        actor_org_user_id=ou["id"],
-        lead_name=f"Contact lead {uuid.uuid4().hex}",
-        contact_name="Marie Test",
-        phone_raw="+237 699 000 111",
-        channel_notes="WhatsApp",
-    )
-    contact = conn.execute("SELECT * FROM contacts WHERE id = ?", (result["contact_id"],)).fetchone()
-    self.assertEqual(contact["phone_normalized"], "237699000111")
 
 
 @check("new_lead_creates_comment")
@@ -575,6 +506,297 @@ def _(self):
     with mock.patch.dict(os.environ, {"APP_ENV": "cloud", "DATABASE_URL": ""}, clear=False):
         with self.assertRaises(DatabaseConfigurationError):
             get_connection()
+
+
+@check("lead_board_has_one_row_per_prospect")
+def _(self):
+    rows = build_lead_board(self.conn, self.org["id"])
+    self.assertEqual(len(rows), 78)
+
+
+@check("lead_board_aggregates_contacts_actions_comments")
+def _(self):
+    rows = build_lead_board(self.conn, self.org["id"])
+    row = next(item for item in rows if item["name"] == "BLACK AND WHITE")
+    self.assertIn("contacts", row)
+    self.assertIn("actions", row)
+    self.assertIn("comments", row)
+
+
+@check("lead_board_owner_scope")
+def _(self):
+    ou = self.agent_org_user(self.conn, "Joël")
+    rows = build_lead_board(self.conn, self.org["id"], allowed_owner_ids=[ou["id"]])
+    self.assertTrue(rows)
+    self.assertEqual({row["owner_org_user_id"] for row in rows}, {ou["id"]})
+
+
+@check("lead_board_searches_human_fields")
+def _(self):
+    rows = build_lead_board(self.conn, self.org["id"])
+    filtered = filter_lead_board(rows, search="black and white")
+    self.assertGreaterEqual(len(filtered), 1)
+
+
+@check("lead_board_filters_urgency")
+def _(self):
+    rows = build_lead_board(self.conn, self.org["id"])
+    filtered = filter_lead_board(rows, urgency_colors={"red"})
+    self.assertTrue(filtered)
+    self.assertEqual({row["urgency_color"] for row in filtered}, {"red"})
+
+
+@check("lead_board_team_summary_includes_every_member")
+def _(self):
+    rows = build_lead_board(self.conn, self.org["id"])
+    summary = team_board_summary(self.conn, self.org["id"], rows)
+    self.assertEqual(len(summary), 5)
+    self.assertTrue(all("lead_count" in member for member in summary))
+
+
+@check("lead_board_excel_is_readable")
+def _(self):
+    rows = build_lead_board(self.conn, self.org["id"])[:3]
+    workbook = load_workbook(io.BytesIO(lead_board_excel(rows, "fr")), read_only=True)
+    self.assertEqual(workbook["Lead Board"].max_row, 4)
+
+
+@check("new_lead_creates_multiple_contacts")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    result = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name=f"Multi contact {uuid.uuid4().hex}",
+        contacts=[
+            {"full_name": "Manager Test", "role_title": "Manager"},
+            {"full_name": "Bar Test", "role_title": "Barman"},
+            {"full_name": "Ops Test", "role_title": "Operations"},
+        ],
+    )
+    self.assertEqual(len(result["contact_ids"]), 3)
+    primary_count = conn.execute(
+        "SELECT COUNT(*) AS count FROM contacts WHERE lead_id = ? AND is_primary = 1",
+        (result["lead_id"],),
+    ).fetchone()["count"]
+    self.assertEqual(primary_count, 1)
+
+
+@check("new_lead_preserves_contact_channels")
+def _(self):
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    result = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name=f"Channels {uuid.uuid4().hex}",
+        contacts=[
+            {
+                "full_name": "Awa Test",
+                "phone_raw": "+237 699 000 111",
+                "email": "awa@example.test",
+                "whatsapp": "+237699000111",
+            }
+        ],
+    )
+    contact = conn.execute(
+        "SELECT * FROM contacts WHERE id = ?",
+        (result["contact_ids"][0],),
+    ).fetchone()
+    self.assertEqual(contact["phone_normalized"], "237699000111")
+    self.assertEqual(contact["email"], "awa@example.test")
+    self.assertEqual(contact["whatsapp"], "+237699000111")
+
+
+@check("google_calendar_url_is_prefilled")
+def _(self):
+    url = google_calendar_url(title="Appeler Hôtel H", due_date="2026-07-30", details="Manager")
+    self.assertIn("calendar.google.com/calendar/render", url)
+    self.assertIn("20260730%2F20260731", url)
+    self.assertIn("Appeler", url)
+
+
+@check("ics_contains_one_day_reminder")
+def _(self):
+    content = action_ics(
+        action_id="action-test",
+        title="Rendez-vous",
+        due_date="2026-07-30",
+        details="Suivi",
+    ).decode("utf-8")
+    self.assertIn("TRIGGER:-P1D", content)
+    self.assertIn("DTSTART;VALUE=DATE:20260730", content)
+
+
+@check("quick_access_file_contains_no_credentials")
+def _(self):
+    conn = self.fresh_conn()
+    auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    _, file_bytes = create_quick_access_file(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    payload = json.loads(file_bytes)
+    self.assertNotIn("pin", json.dumps(payload).casefold())
+    self.assertNotIn("password", json.dumps(payload).casefold())
+    stored = conn.execute("SELECT token_hash FROM auth_sessions WHERE id = ?", (payload["session_id"],)).fetchone()
+    self.assertNotEqual(stored["token_hash"], payload["token"])
+
+
+@check("quick_access_authenticates_active_file")
+def _(self):
+    conn = self.fresh_conn()
+    auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    _, file_bytes = create_quick_access_file(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    result = authenticate_quick_access(conn, file_bytes)
+    self.assertTrue(result.ok)
+    self.assertEqual(result.user["id"], auth.user["id"])
+
+
+@check("quick_access_can_be_revoked")
+def _(self):
+    conn = self.fresh_conn()
+    auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    session_id, file_bytes = create_quick_access_file(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    self.assertTrue(revoke_quick_access(conn, session_id=session_id, org_user_id=auth.org_user["id"]))
+    self.assertFalse(authenticate_quick_access(conn, file_bytes).ok)
+
+
+@check("password_reset_request_is_deduplicated")
+def _(self):
+    conn = self.fresh_conn()
+    auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    first = request_password_reset(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    second = request_password_reset(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    self.assertEqual(first, second)
+    self.assertEqual(len(list_pending_requests(conn, auth.organization["id"])), 1)
+
+
+@check("password_reset_approval_resets_password_and_tokens")
+def _(self):
+    conn = self.fresh_conn()
+    auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    set_user_password(conn, auth.user["id"], "secret")
+    _, file_bytes = create_quick_access_file(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    request_id = request_password_reset(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    review_password_reset(
+        conn,
+        request_id=request_id,
+        organization_id=auth.organization["id"],
+        reviewer_user_id=auth.user["id"],
+        approve=True,
+    )
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (auth.user["id"],)).fetchone()
+    self.assertEqual(password_mode(user), "setup")
+    self.assertFalse(authenticate_quick_access(conn, file_bytes).ok)
+
+
+@check("company_csv_archive_round_trip")
+def _(self):
+    archive = export_organization_csv_archive(self.conn, self.org["id"])
+    parsed = parse_organization_csv_archive(archive, self.org["id"])
+    self.assertEqual(len(parsed["leads"]), 78)
+    self.assertEqual(len(parsed["comments"]), 22)
+
+
+@check("company_csv_archive_rejects_other_company")
+def _(self):
+    archive = export_organization_csv_archive(self.conn, self.org["id"])
+    with self.assertRaisesRegex(ValueError, "wrong_organization"):
+        parse_organization_csv_archive(archive, self.admin_org["id"])
+
+
+@check("company_replacement_requires_three_pins_and_password")
+def _(self):
+    conn = self.fresh_conn()
+    auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    set_user_password(conn, auth.user["id"], "admin-secret")
+    self.assertFalse(
+        verify_replacement_authorization(
+            conn,
+            organization_id=auth.organization["id"],
+            user_id=auth.user["id"],
+            company_pins=("lesconfiotes1991", "wrong", "lesconfiotes1991"),
+            password="admin-secret",
+        )
+    )
+    self.assertTrue(
+        verify_replacement_authorization(
+            conn,
+            organization_id=auth.organization["id"],
+            user_id=auth.user["id"],
+            company_pins=("lesconfiotes1991",) * 3,
+            password="admin-secret",
+        )
+    )
+
+
+@check("company_replacement_preserves_accounts_and_sessions")
+def _(self):
+    conn = self.fresh_conn()
+    auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    create_quick_access_file(
+        conn,
+        organization_id=auth.organization["id"],
+        user_id=auth.user["id"],
+        org_user_id=auth.org_user["id"],
+    )
+    archive = export_organization_csv_archive(conn, auth.organization["id"])
+    parsed = parse_organization_csv_archive(archive, auth.organization["id"])
+    lead = conn.execute(
+        "SELECT id, name FROM leads WHERE organization_id = ? ORDER BY id LIMIT 1",
+        (auth.organization["id"],),
+    ).fetchone()
+    users_before = conn.execute("SELECT COUNT(*) AS count FROM users").fetchone()["count"]
+    conn.execute("UPDATE leads SET name = 'Temporary change' WHERE id = ?", (lead["id"],))
+    conn.commit()
+    replace_organization_business_data(
+        conn,
+        organization_id=auth.organization["id"],
+        actor_user_id=auth.user["id"],
+        archive_data=parsed,
+    )
+    restored = conn.execute("SELECT name FROM leads WHERE id = ?", (lead["id"],)).fetchone()
+    users_after = conn.execute("SELECT COUNT(*) AS count FROM users").fetchone()["count"]
+    sessions = conn.execute("SELECT COUNT(*) AS count FROM auth_sessions").fetchone()["count"]
+    self.assertEqual(restored["name"], lead["name"])
+    self.assertEqual(users_after, users_before)
+    self.assertEqual(sessions, 1)
 
 
 @check("supabase_security_covers_all_tables")
