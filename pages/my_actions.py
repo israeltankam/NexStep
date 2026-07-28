@@ -59,18 +59,21 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
             quick = st.text_area(t("comments.quick_add", language), key=f"comment_{action['id']}", height=80)
             col1, col2, col3 = st.columns(3)
             if col1.button("💬 " + t("comments.save", language), key=f"save_{action['id']}", use_container_width=True):
-                with st.spinner(t("spinner.comment", language)):
-                    add_comment(
-                        conn,
-                        organization_id=str(session["organization_id"]),
-                        lead_id=str(action["lead_id"]),
-                        action_id=str(action["id"]),
-                        org_user_id=str(session["org_user_id"]),
-                        body=quick,
-                    )
-                    conn.commit()
-                st.success(t("comments.saved", language))
-                st.rerun()
+                if not quick.strip():
+                    st.warning(t("comments.empty", language))
+                else:
+                    with st.spinner(t("spinner.comment", language)):
+                        add_comment(
+                            conn,
+                            organization_id=str(session["organization_id"]),
+                            lead_id=str(action["lead_id"]),
+                            action_id=str(action["id"]),
+                            org_user_id=str(session["org_user_id"]),
+                            body=quick,
+                        )
+                        conn.commit()
+                    st.success(t("comments.saved", language))
+                    st.rerun()
             if col2.button("✅ " + t("action.complete", language), key=f"complete_{action['id']}", use_container_width=True):
                 st.session_state["guided_focus_action_id"] = action["id"]
                 st.session_state["page"] = "next_action"

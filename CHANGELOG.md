@@ -4,6 +4,10 @@
 
 - Remplacement des fiches prospects techniques et de la carte équipe par un Lead Board unique, filtrable et sélectionnable, avec contacts, actions et commentaires en langage utilisateur.
 - Suppression du menu « Plus » devenu inutile; l’administration apparaît directement pour les rôles autorisés.
+- Correction du cache de traduction afin que les nouveaux libellés, dont l’accès rapide sur l’écran de connexion, soient rechargés après un déploiement.
+- Ajout d’un audit exhaustif des clés et variables de traduction FR/EN, avec correction des statuts d’action manquants.
+- Ajout d’une compatibilité de rechargement Streamlit pour éviter le crash du menu après un déploiement à chaud.
+- Les formulaires de commentaire refusent désormais un texte vide avec un message traduit au lieu de lever une erreur.
 - Ajout du récapitulatif de tous les membres de l’entreprise et du filtre multi-agents selon les droits existants.
 - Ajout de l’export Excel du Lead Board filtré pour chaque agent.
 - Extension de la création guidée à cinq contacts par prospect, sans changement du schéma des contacts.

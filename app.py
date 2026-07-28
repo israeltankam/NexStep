@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from inspect import signature
 
 import streamlit as st
 
@@ -41,6 +42,21 @@ def _initialize_database() -> bool:
 def _connection():
     _initialize_database()
     return get_connection()
+
+
+def _render_sidebar_compat(conn: sqlite3.Connection, session: dict[str, object]) -> str:
+    """Survive one Streamlit hot reload when the old sidebar module is cached.
+
+    Streamlit can reload ``app.py`` after a Git pull while keeping an already
+    imported module in memory. The previous sidebar accepted only ``session``;
+    the current one also needs the database connection for revocable access
+    files. This compatibility bridge keeps the app usable until the process is
+    fully restarted, then naturally uses the current two-argument API.
+    """
+
+    if len(signature(render_sidebar).parameters) == 1:
+        return render_sidebar(session)
+    return render_sidebar(conn, session)
 
 
 def _load_pending_rows(conn: sqlite3.Connection) -> tuple[sqlite3.Row, sqlite3.Row, sqlite3.Row] | None:
@@ -215,7 +231,7 @@ def main() -> None:
             render_login(conn)
             return
 
-        selected = render_sidebar(conn, st.session_state["session"])
+        selected = _render_sidebar_compat(conn, st.session_state["session"])
         st.session_state["page"] = selected
         routes = {
             "next_action": next_action.render,

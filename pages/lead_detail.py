@@ -65,18 +65,21 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
     with st.form(f"lead_comment_{lead['id']}"):
         body = st.text_area(t("comments.general_add", language), height=100)
         if st.form_submit_button("💬 " + t("comments.save", language)):
-            with st.spinner(t("spinner.comment", language)):
-                add_comment(
-                    conn,
-                    organization_id=lead["organization_id"],
-                    lead_id=lead["id"],
-                    org_user_id=str(session["org_user_id"]),
-                    body=body,
-                    comment_type="general",
-                )
-                conn.commit()
-            st.success(t("comments.saved", language))
-            st.rerun()
+            if not body.strip():
+                st.warning(t("comments.empty", language))
+            else:
+                with st.spinner(t("spinner.comment", language)):
+                    add_comment(
+                        conn,
+                        organization_id=lead["organization_id"],
+                        lead_id=lead["id"],
+                        org_user_id=str(session["org_user_id"]),
+                        body=body,
+                        comment_type="general",
+                    )
+                    conn.commit()
+                st.success(t("comments.saved", language))
+                st.rerun()
     render_comments(
         list_comments_for_lead(conn, lead["id"]),
         max_preview=2000,

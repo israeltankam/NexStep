@@ -12,13 +12,20 @@ DEFAULT_LANGUAGE = "fr"
 SUPPORTED_LANGUAGES = {"fr": "Français", "en": "English"}
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=16)
+def _load_locale_version(selected: str, modified_at_ns: int) -> dict[str, str]:
+    """Cache one exact file version and reload it after a deployment update."""
+
+    path = LOCALES_DIR / f"{selected}.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def load_locale(language: str) -> dict[str, str]:
     selected = language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
     path = LOCALES_DIR / f"{selected}.json"
     if not path.exists():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    return _load_locale_version(selected, path.stat().st_mtime_ns)
 
 
 def t(key: str, language: str = DEFAULT_LANGUAGE, **kwargs: object) -> str:

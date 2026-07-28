@@ -219,18 +219,21 @@ def _render_selected_lead(
                 use_container_width=True,
             )
         if submitted:
-            with st.spinner(t("spinner.comment", language)):
-                add_comment(
-                    conn,
-                    organization_id=str(session["organization_id"]),
-                    lead_id=str(lead["id"]),
-                    org_user_id=str(session["org_user_id"]),
-                    body=body,
-                    comment_type="general",
-                )
-                conn.commit()
-            st.success(t("comments.saved", language))
-            st.rerun()
+            if not body.strip():
+                st.warning(t("comments.empty", language))
+            else:
+                with st.spinner(t("spinner.comment", language)):
+                    add_comment(
+                        conn,
+                        organization_id=str(session["organization_id"]),
+                        lead_id=str(lead["id"]),
+                        org_user_id=str(session["org_user_id"]),
+                        body=body,
+                        comment_type="general",
+                    )
+                    conn.commit()
+                st.success(t("comments.saved", language))
+                st.rerun()
         render_comments(
             lead["comments"],
             max_preview=2000,

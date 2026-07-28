@@ -273,19 +273,22 @@ def _render_more_options(
         with st.form(f"quick_comment_{action['id']}"):
             body = st.text_area(t("comments.quick_add", language), height=80)
             if st.form_submit_button("💬 " + t("comments.save", language), use_container_width=True):
-                with st.spinner(t("spinner.comment", language)):
-                    add_comment(
-                        conn,
-                        organization_id=str(action["organization_id"]),
-                        lead_id=str(action["lead_id"]),
-                        action_id=str(action["id"]),
-                        org_user_id=str(session["org_user_id"]),
-                        body=body,
-                        comment_type="general",
-                    )
-                    conn.commit()
-                st.session_state["guided_flash"] = t("comments.saved", language)
-                st.rerun()
+                if not body.strip():
+                    st.warning(t("comments.empty", language))
+                else:
+                    with st.spinner(t("spinner.comment", language)):
+                        add_comment(
+                            conn,
+                            organization_id=str(action["organization_id"]),
+                            lead_id=str(action["lead_id"]),
+                            action_id=str(action["id"]),
+                            org_user_id=str(session["org_user_id"]),
+                            body=body,
+                            comment_type="general",
+                        )
+                        conn.commit()
+                    st.session_state["guided_flash"] = t("comments.saved", language)
+                    st.rerun()
 
         if st.button("💬 " + t("lead.open", language), key=f"open_lead_{action['id']}"):
             st.session_state["selected_lead_id"] = action["lead_id"]
