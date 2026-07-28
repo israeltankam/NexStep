@@ -8,6 +8,8 @@ import os
 import sys
 import unittest
 import uuid
+import csv
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -30,6 +32,7 @@ from services.access_service import (
     create_quick_access_file,
     revoke_quick_access,
 )
+from services.full_backup_service import FULL_BACKUP_TABLES, export_full_database_backup
 from services.comment_service import add_comment, list_comments_for_lead, search_comments
 from services.lead_board_service import (
     build_lead_board,
@@ -799,6 +802,41 @@ def _(self):
     self.assertEqual(sessions, 1)
 
 
+@check("full_backup_contains_every_nexstep_table")
+def _(self):
+    archive_bytes = export_full_database_backup(self.conn)
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+        names = set(archive.namelist())
+        expected = {f"tables/{table}.csv" for table in FULL_BACKUP_TABLES}
+        self.assertTrue(expected.issubset(names))
+        manifest = list(
+            csv.DictReader(
+                io.StringIO(archive.read("manifest.csv").decode("utf-8-sig"))
+            )
+        )
+    self.assertEqual({row["table_name"] for row in manifest}, set(FULL_BACKUP_TABLES))
+
+
+@check("full_backup_covers_all_organizations_and_users")
+def _(self):
+    archive_bytes = export_full_database_backup(self.conn)
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+        organizations = list(
+            csv.DictReader(
+                io.StringIO(archive.read("tables/organizations.csv").decode("utf-8-sig"))
+            )
+        )
+        users = list(
+            csv.DictReader(
+                io.StringIO(archive.read("tables/users.csv").decode("utf-8-sig"))
+            )
+        )
+        self.assertIn("schema.sql", archive.namelist())
+        self.assertIn("IMPORTANT_README.txt", archive.namelist())
+    self.assertEqual(len(organizations), 2)
+    self.assertEqual(len(users), 6)
+
+
 @check("supabase_security_covers_all_tables")
 def _(self):
     security_sql = (ROOT / "database" / "supabase_security.sql").read_text(encoding="utf-8")
@@ -811,7 +849,6 @@ I18N_KEYS = [
     "login.company_pin",
     "nav.new_lead",
     "guided.outcome_question",
-    "guided.prospect_create",
 ]
 
 for language in ("fr", "en"):

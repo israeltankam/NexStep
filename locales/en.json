@@ -305,5 +305,15 @@
   "company_data.replace_button": "Replace company data",
   "company_data.authorization_failed": "Confirmation rejected. Check all three PIN entries and the password.",
   "company_data.replace_spinner": "Validating and atomically replacing data...",
-  "company_data.replaced": "Business data replaced. User access is unchanged."
+  "company_data.replaced": "Business data replaced. User access is unchanged.",
+  "full_backup.tab": "Full backup",
+  "full_backup.title": "Back up the entire NexStep database",
+  "full_backup.warning": "Highly confidential archive: it contains every company, user, business record, log and stored authentication hash.",
+  "full_backup.pepper": "Required separate backup: preserve the exact APP_PIN_PEPPER value from Streamlit secrets. It is not stored in PostgreSQL and cannot be included in this archive.",
+  "full_backup.password": "Super administrator password",
+  "full_backup.prepare": "Prepare full backup",
+  "full_backup.authorization_failed": "Password rejected or account not authorized.",
+  "full_backup.spinner": "Backing up every NexStep table...",
+  "full_backup.ready": "Full backup ready.",
+  "full_backup.download": "Download the entire database"
 }

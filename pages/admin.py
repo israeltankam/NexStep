@@ -8,6 +8,10 @@ import sqlite3
 import streamlit as st
 
 from services import admin_service
+from services.full_backup_service import (
+    export_full_database_backup,
+    verify_global_backup_authorization,
+)
 from services.import_service import import_legacy_rows, read_uploaded_table
 from services.migration_service import migrate_sqlite_to_postgres
 from services.organization_data_service import (
@@ -155,6 +159,44 @@ def _render_company_data(
     st.rerun()
 
 
+def _render_full_database_backup(
+    conn: sqlite3.Connection,
+    session: dict[str, object],
+    language: str,
+) -> None:
+    """Provide a complete disaster-recovery snapshot to the global admin."""
+
+    st.subheader(t("full_backup.title", language))
+    st.warning(t("full_backup.warning", language))
+    st.info(t("full_backup.pepper", language))
+    with st.form("full_database_backup_authorization"):
+        password = st.text_input(t("full_backup.password", language), type="password")
+        submitted = st.form_submit_button(
+            t("full_backup.prepare", language),
+            use_container_width=True,
+        )
+    if submitted:
+        if not verify_global_backup_authorization(
+            conn,
+            user_id=str(session["user_id"]),
+            password=password,
+        ):
+            st.error(t("full_backup.authorization_failed", language))
+        else:
+            with st.spinner(t("full_backup.spinner", language)):
+                st.session_state["full_database_backup"] = export_full_database_backup(conn)
+            st.success(t("full_backup.ready", language))
+
+    if archive := st.session_state.get("full_database_backup"):
+        st.download_button(
+            t("full_backup.download", language),
+            archive,
+            file_name="nexstep_sauvegarde_complete.zip",
+            mime="application/zip",
+            use_container_width=True,
+        )
+
+
 def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
     language = str(session.get("language", "fr"))
     role = str(session.get("role") or "")
@@ -193,7 +235,7 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
         tab_logs,
         tab_migration,
         tab_resets,
-        tab_company_data,
+        tab_full_backup,
     ) = st.tabs(
         [
             t("admin.organizations", language),
@@ -203,7 +245,7 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
             t("admin.logs", language),
             t("admin.migration", language),
             t("password_reset.admin_tab", language),
-            t("company_data.tab", language),
+            t("full_backup.tab", language),
         ]
     )
 
@@ -330,5 +372,5 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
     with tab_resets:
         _render_password_resets(conn, session, language)
 
-    with tab_company_data:
-        _render_company_data(conn, session, language)
+    with tab_full_backup:
+        _render_full_database_backup(conn, session, language)

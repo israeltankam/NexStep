@@ -305,5 +305,15 @@
   "company_data.replace_button": "Remplacer les données de l'entreprise",
   "company_data.authorization_failed": "Confirmation refusée. Vérifie les trois PIN et le mot de passe.",
   "company_data.replace_spinner": "Validation et remplacement atomique des données...",
-  "company_data.replaced": "Les données métier ont été remplacées. Les accès utilisateurs sont inchangés."
+  "company_data.replaced": "Les données métier ont été remplacées. Les accès utilisateurs sont inchangés.",
+  "full_backup.tab": "Sauvegarde complète",
+  "full_backup.title": "Sauvegarder toute la base NexStep",
+  "full_backup.warning": "Archive hautement confidentielle : elle contient toutes les entreprises, tous les utilisateurs, toutes les données métier, les journaux et les empreintes d’authentification.",
+  "full_backup.pepper": "Sauvegarde séparée indispensable : conserve exactement la valeur APP_PIN_PEPPER des secrets Streamlit. Elle n’est pas dans PostgreSQL et n’est donc pas incluse dans cette archive.",
+  "full_backup.password": "Mot de passe du super administrateur",
+  "full_backup.prepare": "Préparer la sauvegarde complète",
+  "full_backup.authorization_failed": "Mot de passe refusé ou compte non autorisé.",
+  "full_backup.spinner": "Sauvegarde de toutes les tables NexStep...",
+  "full_backup.ready": "Sauvegarde complète prête.",
+  "full_backup.download": "Télécharger toute la base"
 }

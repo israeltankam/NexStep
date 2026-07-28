@@ -15,6 +15,7 @@
 - Ajout de fichiers d’accès personnels révocables, sans PIN ni mot de passe, la couche native de cookies Streamlit étant en lecture seule.
 - Ajout du workflow de réinitialisation de mot de passe approuvé ou refusé dans l’application par un administrateur d’entreprise.
 - Ajout d’une archive ZIP de CSV pour exporter et remplacer atomiquement les données métier d’une entreprise, avec trois confirmations du PIN entreprise et une confirmation du mot de passe administrateur.
+- Ajout pour le super administrateur d’une sauvegarde de secours globale couvrant les 19 tables, toutes les entreprises, tous les utilisateurs, les données métier, journaux, sessions et empreintes d’authentification.
 - Ajout d’une migration Supabase strictement additive pour `auth_sessions` et `password_reset_requests`, avec RLS et retrait des droits publics.
 - Mise à jour des catalogues FR/EN, du guide utilisateur bilingue, du guide de migration et des 100 tests automatisés.
 
