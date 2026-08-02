@@ -54,6 +54,10 @@ from services.password_reset_service import (
     review_password_reset,
 )
 from services.seed_service import AGENT_PINS, LEGACY_COMMENTS, ensure_seed_data, seed_validation_counts
+from services.user_profile_service import (
+    update_own_contact_details,
+    update_user_contact_details_as_global_admin,
+)
 from utils.calendar import action_ics, google_calendar_url
 from utils.dates import excel_serial_to_date, parse_date
 from utils.guided_flow import action_value, due_date_from_choice, outcome_value, touchpoint_value
@@ -684,6 +688,11 @@ def _(self):
 def _(self):
     conn = self.fresh_conn()
     auth = identify_by_pins(conn, "lesconfiotes1991", "0001")
+    conn.execute(
+        "UPDATE organization_users SET role = 'company_admin' WHERE id = ?",
+        (auth.org_user["id"],),
+    )
+    conn.commit()
     first = request_password_reset(
         conn,
         organization_id=auth.organization["id"],
@@ -697,7 +706,66 @@ def _(self):
         org_user_id=auth.org_user["id"],
     )
     self.assertEqual(first, second)
-    self.assertEqual(len(list_pending_requests(conn, auth.organization["id"])), 1)
+    company_requests = list_pending_requests(
+        conn,
+        auth.organization["id"],
+        reviewer_user_id=auth.user["id"],
+    )
+    self.assertEqual(len(company_requests), 1)
+    self.assertEqual(company_requests[0]["organization_name"], "Les Confiotes")
+    own_details = update_own_contact_details(
+        conn,
+        user_id=auth.user["id"],
+        organization_id=auth.organization["id"],
+        email="JOEL@example.test",
+        phone="+237 600 000 001",
+    )
+    self.assertEqual(own_details["email"], "joel@example.test")
+
+    global_admin = conn.execute(
+        "SELECT * FROM users WHERE is_global_admin = 1"
+    ).fetchone()
+    global_link = conn.execute(
+        "SELECT * FROM organization_users WHERE user_id = ?",
+        (global_admin["id"],),
+    ).fetchone()
+    other_request_id = request_password_reset(
+        conn,
+        organization_id=global_link["organization_id"],
+        user_id=global_admin["id"],
+        org_user_id=global_link["id"],
+    )
+    company_requests = list_pending_requests(
+        conn,
+        auth.organization["id"],
+        reviewer_user_id=auth.user["id"],
+    )
+    self.assertEqual(len(company_requests), 1)
+    self.assertFalse(review_password_reset(
+        conn,
+        request_id=other_request_id,
+        organization_id=auth.organization["id"],
+        reviewer_user_id=auth.user["id"],
+        approve=False,
+    ))
+    with self.assertRaises(PermissionError):
+        update_user_contact_details_as_global_admin(
+            conn,
+            target_user_id=global_admin["id"],
+            email="blocked@example.test",
+            phone="",
+            actor_user_id=auth.user["id"],
+        )
+    global_requests = list_pending_requests(
+        conn,
+        global_link["organization_id"],
+        reviewer_user_id=global_admin["id"],
+    )
+    self.assertEqual(len(global_requests), 2)
+    self.assertEqual(
+        {row["organization_name"] for row in global_requests},
+        {"Les Confiotes", "scale.ag"},
+    )
 
 
 @check("password_reset_approval_resets_password_and_tokens")
@@ -717,16 +785,37 @@ def _(self):
         user_id=auth.user["id"],
         org_user_id=auth.org_user["id"],
     )
-    review_password_reset(
+    global_admin = conn.execute(
+        "SELECT * FROM users WHERE is_global_admin = 1"
+    ).fetchone()
+    global_link = conn.execute(
+        "SELECT * FROM organization_users WHERE user_id = ?",
+        (global_admin["id"],),
+    ).fetchone()
+    self.assertTrue(review_password_reset(
         conn,
         request_id=request_id,
-        organization_id=auth.organization["id"],
-        reviewer_user_id=auth.user["id"],
+        organization_id=global_link["organization_id"],
+        reviewer_user_id=global_admin["id"],
         approve=True,
-    )
+    ))
     user = conn.execute("SELECT * FROM users WHERE id = ?", (auth.user["id"],)).fetchone()
     self.assertEqual(password_mode(user), "setup")
     self.assertFalse(authenticate_quick_access(conn, file_bytes).ok)
+    audit = conn.execute(
+        "SELECT * FROM audit_logs WHERE entity_id = ?",
+        (request_id,),
+    ).fetchone()
+    self.assertEqual(audit["organization_id"], auth.organization["id"])
+    self.assertEqual(audit["actor_user_id"], global_admin["id"])
+    updated_details = update_user_contact_details_as_global_admin(
+        conn,
+        target_user_id=auth.user["id"],
+        email="joel.updated@example.test",
+        phone="+237 600 000 002",
+        actor_user_id=global_admin["id"],
+    )
+    self.assertEqual(updated_details["phone"], "+237 600 000 002")
 
 
 @check("company_csv_archive_round_trip")

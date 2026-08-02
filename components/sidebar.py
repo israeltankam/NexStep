@@ -7,6 +7,10 @@ import sqlite3
 import streamlit as st
 
 from services.access_service import create_quick_access_file, revoke_quick_access
+from services.user_profile_service import (
+    get_user_contact_details,
+    update_own_contact_details,
+)
 from utils.i18n import t
 from utils.paths import MIGRATION_GUIDE_HTML, NEXSTEP_LOGO, SCALEAG_LOGO, USER_GUIDE_HTML
 from utils.ui import image_data_uri
@@ -27,7 +31,7 @@ def render_sidebar(conn: sqlite3.Connection, session: dict[str, object]) -> str:
         ("lead_board", "📊 " + t("nav.lead_board", language)),
         ("my_actions", "✅ " + t("nav.my_actions", language)),
     ]
-    if session.get("role") in {"super_admin", "company_admin"}:
+    if session.get("role") in {"super_admin", "company_admin"} or session.get("is_global_admin"):
         pages.append(("admin", "⚙️ " + t("nav.admin", language)))
 
     current = st.session_state.get("page", "next_action")
@@ -52,6 +56,36 @@ def render_sidebar(conn: sqlite3.Connection, session: dict[str, object]) -> str:
         if language_choice != language:
             st.session_state["session"]["language"] = language_choice
             st.rerun()
+        st.divider()
+        contact_details = get_user_contact_details(conn, str(session["user_id"]))
+        with st.form("help_contact_details"):
+            st.caption(t("help.contact_title", language))
+            st.caption(t("help.contact_hint", language))
+            email = st.text_input(
+                t("help.contact_email", language),
+                value=contact_details["email"],
+            )
+            phone = st.text_input(
+                t("help.contact_phone", language),
+                value=contact_details["phone"],
+            )
+            if st.form_submit_button(
+                t("help.contact_save", language),
+                use_container_width=True,
+            ):
+                try:
+                    with st.spinner(t("help.contact_saving", language)):
+                        update_own_contact_details(
+                            conn,
+                            user_id=str(session["user_id"]),
+                            organization_id=str(session["organization_id"]),
+                            email=email,
+                            phone=phone,
+                        )
+                except ValueError as exc:
+                    st.error(t(f"help.contact_{exc}", language))
+                else:
+                    st.success(t("help.contact_saved", language))
         if USER_GUIDE_HTML.exists():
             st.download_button(
                 t("help.user_guide", language),
@@ -60,7 +94,7 @@ def render_sidebar(conn: sqlite3.Connection, session: dict[str, object]) -> str:
                 mime="text/html",
                 use_container_width=True,
             )
-        if MIGRATION_GUIDE_HTML.exists() and session.get("role") == "super_admin":
+        if MIGRATION_GUIDE_HTML.exists() and session.get("is_global_admin"):
             st.download_button(
                 t("help.migration_guide", language),
                 MIGRATION_GUIDE_HTML.read_bytes(),

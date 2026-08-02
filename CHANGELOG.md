@@ -1,5 +1,28 @@
 # Journal de modifications NexStep
 
+## 2026-08-02
+
+- Correction de la boîte de réinitialisation : le super-administrateur scale.ag voit et traite les demandes de toutes les entreprises, tandis que chaque administrateur local reste limité à la sienne.
+- Ajout des coordonnées personnelles facultatives dans le menu « Aide » et de leur édition globale sécurisée dans l’onglet « Utilisateurs ».
+- Alignement de la connexion Android sur Streamlit : identification par les deux PIN, puis saisie, création initiale ou changement du mot de passe selon le compte.
+- Ajout d’une case bilingue pour afficher ou masquer les PIN et mots de passe saisis, sans les enregistrer sur le téléphone.
+- Passage de l’application Android en version `1.0.2` (`versionCode 3`).
+
+## 2026-07-30
+
+- Remplacement complet de l’ancienne enveloppe WebView par une application Android autonome : aucun écran Streamlit ni navigateur intégré.
+- Ajout des écrans Android natifs bilingues de connexion, prochaine action, parcours de clôture, création de prospect avec plusieurs contacts, Lead Board, liste d’actions et administration.
+- Ajout d’une API Supabase Edge Function dédiée qui réutilise les PIN, mots de passe, rôles et sessions révocables existants sans exposer PostgreSQL au téléphone.
+- Ajout de cinq fonctions PostgreSQL privées et transactionnelles via une migration strictement additive, sans modification ni suppression des tables et données en production.
+- Chiffrement de la session mobile avec Android Keystore; aucun PIN ni mot de passe n’est conservé sur le téléphone.
+- Ajout des exports Excel, ICS avec rappel la veille et sauvegardes JSON autorisées, ainsi que des liens téléphone, Agenda et scale.ag.
+- Blocage Gradle de `DATABASE_URL`, `APP_PIN_PEPPER`, des clés secrètes Supabase, des URL PostgreSQL et de toute réintroduction de WebView dans l’APK.
+- Ajout d’un guide de déploiement Supabase actualisé et d’un script bilingue de compilation/signature utilisant uniquement l’URL publique et la clé Publishable.
+- Validation réussie de 705 contrôles statiques, 7 tests cryptographiques Deno, 100 tests Python de non-régression, contrôle TypeScript, compilation de l’APK Android natif et Android Lint sans erreur ni avertissement avec l’API 34 de diagnostic.
+- Remplacement de l’écran de diagnostic bloquant par une configuration mobile bilingue : URL publique préremplie, saisie de la clé Publishable, validation stricte, test de l’Edge Function et mémorisation locale des seules valeurs publiques.
+- Ajout d’un accès à la configuration depuis la connexion et passage de l’application Android en version `1.0.1` (`versionCode 2`).
+- Ajout d’un déploiement PowerShell guidé du backend mobile Supabase et correction du répertoire d’exécution du CLI afin d’éviter l’écran « Edge Function non déployée ».
+
 ## 2026-07-28
 
 - Remplacement des fiches prospects techniques et de la carte équipe par un Lead Board unique, filtrable et sélectionnable, avec contacts, actions et commentaires en langage utilisateur.

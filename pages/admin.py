@@ -22,6 +22,7 @@ from services.organization_data_service import (
 )
 from services.password_reset_service import list_pending_requests, review_password_reset
 from services.seed_service import seed_validation_counts
+from services.user_profile_service import update_user_contact_details_as_global_admin
 from utils.constants import ROLES
 from utils.i18n import t
 from utils.paths import get_database_path
@@ -36,14 +37,30 @@ def _render_password_resets(
     session: dict[str, object],
     language: str,
 ) -> None:
-    """Render the company administrator's in-app reset inbox."""
+    """Render a company inbox, or every company for a global administrator."""
 
-    requests = list_pending_requests(conn, str(session["organization_id"]))
+    try:
+        requests = list_pending_requests(
+            conn,
+            str(session["organization_id"]),
+            reviewer_user_id=str(session["user_id"]),
+        )
+    except PermissionError:
+        st.error(t("admin.forbidden", language))
+        return
     if not requests:
         st.success(t("password_reset.admin_empty", language))
         return
     for request in requests:
         st.markdown(f"**{request['display_name']}**")
+        if session.get("is_global_admin"):
+            st.caption(
+                t(
+                    "password_reset.organization",
+                    language,
+                    organization=request["organization_name"],
+                )
+            )
         st.caption(t("password_reset.request_date", language, date=request["requested_at"]))
         approve_col, reject_col = st.columns(2)
         if approve_col.button(
@@ -53,30 +70,34 @@ def _render_password_resets(
             use_container_width=True,
         ):
             with st.spinner(t("password_reset.review_spinner", language)):
-                review_password_reset(
+                reviewed = review_password_reset(
                     conn,
                     request_id=str(request["id"]),
                     organization_id=str(session["organization_id"]),
                     reviewer_user_id=str(session["user_id"]),
                     approve=True,
                 )
-            st.success(t("password_reset.approved", language))
-            st.rerun()
+            if reviewed:
+                st.success(t("password_reset.approved", language))
+                st.rerun()
+            st.error(t("admin.forbidden", language))
         if reject_col.button(
             t("password_reset.reject", language),
             key=f"reject_reset_{request['id']}",
             use_container_width=True,
         ):
             with st.spinner(t("password_reset.review_spinner", language)):
-                review_password_reset(
+                reviewed = review_password_reset(
                     conn,
                     request_id=str(request["id"]),
                     organization_id=str(session["organization_id"]),
                     reviewer_user_id=str(session["user_id"]),
                     approve=False,
                 )
-            st.success(t("password_reset.rejected", language))
-            st.rerun()
+            if reviewed:
+                st.success(t("password_reset.rejected", language))
+                st.rerun()
+            st.error(t("admin.forbidden", language))
 
 
 def _render_company_data(
@@ -200,12 +221,13 @@ def _render_full_database_backup(
 def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
     language = str(session.get("language", "fr"))
     role = str(session.get("role") or "")
-    if role not in {"super_admin", "company_admin"}:
+    is_global_admin = bool(session.get("is_global_admin"))
+    if role not in {"super_admin", "company_admin"} and not is_global_admin:
         st.error(t("admin.forbidden", language))
         return
     st.title("⚙️ " + t("admin.title", language))
 
-    if role == "company_admin":
+    if role == "company_admin" and not is_global_admin:
         reset_tab, company_data_tab = st.tabs(
             [
                 t("password_reset.admin_tab", language),
@@ -284,7 +306,8 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                 st.success(t("admin.pin_updated", language))
 
     with tab_users:
-        st.dataframe([dict(row) for row in admin_service.list_users(conn)], use_container_width=True, hide_index=True)
+        users = admin_service.list_users(conn)
+        st.dataframe([dict(row) for row in users], use_container_width=True, hide_index=True)
         with st.form("create_user"):
             st.subheader(t("admin.create_user", language))
             display_name = st.text_input(t("admin.display_name", language))
@@ -305,6 +328,49 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                     )
                 st.success(t("admin.created", language))
                 st.rerun()
+
+        if is_global_admin and users:
+            st.divider()
+            st.subheader(t("admin.edit_user_contact", language))
+            users_by_id = {str(row["id"]): row for row in users}
+            selected_user_id = st.selectbox(
+                t("admin.select_user", language),
+                list(users_by_id),
+                format_func=lambda user_id: (
+                    f"{users_by_id[user_id]['display_name']} · "
+                    f"{users_by_id[user_id]['email'] or user_id[:8]}"
+                ),
+            )
+            selected_user = users_by_id[selected_user_id]
+            with st.form(f"edit_user_contact_{selected_user_id}"):
+                edited_email = st.text_input(
+                    t("help.contact_email", language),
+                    value=str(selected_user["email"] or ""),
+                )
+                edited_phone = st.text_input(
+                    t("help.contact_phone", language),
+                    value=str(selected_user["phone"] or ""),
+                )
+                if st.form_submit_button(
+                    t("admin.save_user_contact", language),
+                    use_container_width=True,
+                ):
+                    try:
+                        with st.spinner(t("spinner.admin", language)):
+                            update_user_contact_details_as_global_admin(
+                                conn,
+                                target_user_id=selected_user_id,
+                                email=edited_email,
+                                phone=edited_phone,
+                                actor_user_id=str(session["user_id"]),
+                            )
+                    except PermissionError:
+                        st.error(t("admin.forbidden", language))
+                    except ValueError as exc:
+                        st.error(t(f"help.contact_{exc}", language))
+                    else:
+                        st.success(t("admin.user_contact_saved", language))
+                        st.rerun()
 
     with tab_links:
         st.dataframe([dict(row) for row in admin_service.list_org_links(conn)], use_container_width=True, hide_index=True)

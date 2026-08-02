@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NexStep" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/nexstep_surface</item>
+        <item name="android:statusBarColor">@color/nexstep_surface</item>
+        <item name="android:navigationBarColor">@color/nexstep_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:colorAccent">@color/nexstep_green</item>
+        <item name="android:windowSplashScreenBackground">@color/nexstep_surface</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/nexstep_logo</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/nexstep_surface</item>
+    </style>
+</resources>

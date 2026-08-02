@@ -1,0 +1,6 @@
+project_id = "nexstep-mobile"
+
+[functions.nexstep-mobile-api]
+# NexStep keeps its existing PIN/password model. The function validates the
+# public API key and its own revocable bearer sessions instead of Supabase Auth.
+verify_jwt = false

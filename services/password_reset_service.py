@@ -11,6 +11,40 @@ from utils.dates import utcnow_iso
 from utils.text import new_id
 
 
+ADMIN_ROLES = {"company_admin", "super_admin"}
+
+
+def _is_global_administrator(conn: sqlite3.Connection, user_id: str) -> bool:
+    """Read the global flag from the database instead of trusting UI state."""
+
+    user = fetch_one(
+        conn,
+        "SELECT is_global_admin FROM users WHERE id = ? AND is_active = 1",
+        (user_id,),
+    )
+    return bool(user and user["is_global_admin"])
+
+
+def _can_review_organization(
+    conn: sqlite3.Connection,
+    *,
+    user_id: str,
+    organization_id: str,
+) -> bool:
+    """Allow active company administrators only inside their organization."""
+
+    link = fetch_one(
+        conn,
+        """
+        SELECT role
+        FROM organization_users
+        WHERE user_id = ? AND organization_id = ? AND is_active = 1
+        """,
+        (user_id, organization_id),
+    )
+    return bool(link and str(link["role"]) in ADMIN_ROLES)
+
+
 def request_password_reset(
     conn: sqlite3.Connection,
     *,
@@ -56,17 +90,33 @@ def request_password_reset(
 def list_pending_requests(
     conn: sqlite3.Connection,
     organization_id: str,
+    *,
+    reviewer_user_id: str,
 ) -> list[dict[str, object]]:
+    """List the reviewer's company inbox, or every inbox for a global admin."""
+
+    global_scope = _is_global_administrator(conn, reviewer_user_id)
+    if not global_scope and not _can_review_organization(
+        conn,
+        user_id=reviewer_user_id,
+        organization_id=organization_id,
+    ):
+        raise PermissionError("password_reset_review_forbidden")
+
+    scope_clause = "" if global_scope else "AND pr.organization_id = ?"
+    parameters = () if global_scope else (organization_id,)
     rows = fetch_all(
         conn,
-        """
-        SELECT pr.*, u.display_name, u.email
+        f"""
+        SELECT pr.*, u.display_name, u.email,
+               COALESCE(o.display_name, o.name) AS organization_name
         FROM password_reset_requests pr
         JOIN users u ON u.id = pr.user_id
-        WHERE pr.organization_id = ? AND pr.status = 'pending'
+        JOIN organizations o ON o.id = pr.organization_id
+        WHERE pr.status = 'pending' {scope_clause}
         ORDER BY pr.requested_at ASC
         """,
-        (organization_id,),
+        parameters,
     )
     return [dict(row) for row in rows]
 
@@ -86,11 +136,23 @@ def review_password_reset(
         """
         SELECT *
         FROM password_reset_requests
-        WHERE id = ? AND organization_id = ? AND status = 'pending'
+        WHERE id = ? AND status = 'pending'
         """,
-        (request_id, organization_id),
+        (request_id,),
     )
     if not request_row:
+        return False
+
+    request_organization_id = str(request_row["organization_id"])
+    global_scope = _is_global_administrator(conn, reviewer_user_id)
+    if not global_scope and (
+        request_organization_id != organization_id
+        or not _can_review_organization(
+            conn,
+            user_id=reviewer_user_id,
+            organization_id=request_organization_id,
+        )
+    ):
         return False
 
     now = utcnow_iso()
@@ -122,7 +184,7 @@ def review_password_reset(
             "audit_logs",
             {
                 "id": new_id(),
-                "organization_id": organization_id,
+                "organization_id": request_organization_id,
                 "actor_user_id": reviewer_user_id,
                 "actor_org_user_id": None,
                 "entity_type": "password_reset_request",

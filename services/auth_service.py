@@ -191,5 +191,6 @@ def build_session_payload(organization: sqlite3.Row, user: sqlite3.Row, org_user
         "org_user_id": org_user["id"],
         "role": org_user["role"],
         "can_view_team": bool(org_user["can_view_team"]),
+        "is_global_admin": bool(user["is_global_admin"]),
         "language": user["preferred_language"] or organization["default_language"] or "fr",
     }

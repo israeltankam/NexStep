@@ -141,8 +141,22 @@
         </div>
         <h3>Revenir plus vite</h3>
         <p>Dans « Aide », crée puis télécharge ton fichier personnel <code>.nexstep</code>. À la prochaine visite, ouvre « Ouvrir avec mon fichier d’accès » et choisis ce fichier. Il ne contient ni PIN ni mot de passe et tu peux le révoquer depuis NexStep.</p>
+        <p>Dans « Aide », la rubrique « Mes coordonnées » te permet aussi d’ajouter, modifier ou retirer facultativement ton e-mail et ton numéro de téléphone.</p>
         <p>Si tu oublies ton mot de passe, saisis d’abord les deux PIN, puis touche « Mot de passe oublié ? ». Un administrateur de ton entreprise pourra approuver la demande. À ta prochaine connexion, tu choisiras un nouveau mot de passe.</p>
         <p class="muted">La connexion et les règles d’accès sont identiques pour les agents, responsables et administrateurs.</p>
+      </section>
+
+      <section>
+        <h2>📱 Application Android</h2>
+        <p>L’application mobile possède ses propres écrans Android : elle n’ouvre ni Streamlit ni un navigateur. Elle utilise les mêmes prospects, actions et accès que NexStep sur le Web. Un APK de test peut demander une seule fois à l’administrateur la clé publique Publishable; l’APK final distribué aux agents est déjà configuré.</p>
+        <ul>
+          <li>Saisis d’abord le PIN entreprise et ton PIN agent. NexStep demande ensuite ton mot de passe habituel ou te propose de le créer lors de la première connexion.</li>
+          <li>La case « Afficher les PIN et mots de passe saisis » permet de vérifier les caractères avant de continuer.</li>
+          <li>Après la première connexion, la session est chiffrée par le téléphone et peut rester ouverte pendant 30 jours. Les PIN et le mot de passe ne sont pas enregistrés.</li>
+          <li>Les liens de téléphone, Agenda et scale.ag s’ouvrent dans l’application adaptée.</li>
+          <li>Les fichiers Excel, ICS et les sauvegardes autorisées sont enregistrés dans <strong>Téléchargements/NexStep</strong>.</li>
+          <li>Une connexion Internet reste nécessaire pour synchroniser les données communes avec Supabase.</li>
+        </ul>
       </section>
 
       <section>
@@ -206,6 +220,7 @@
       <section>
         <h2>⚙️ Administration</h2>
         <p>Le bouton Administration apparaît directement dans le menu des rôles autorisés. Un administrateur d’entreprise peut approuver ou refuser les demandes de nouveau mot de passe et gérer l’archive CSV de son entreprise.</p>
+        <p>Le super-administrateur scale.ag voit les demandes de réinitialisation de toutes les entreprises, avec le nom de l’entreprise concernée. Il peut également modifier l’e-mail et le téléphone de n’importe quel utilisateur depuis l’onglet « Utilisateurs ».</p>
         <p>Le super administrateur scale.ag dispose en plus de « Sauvegarde complète ». Cette archive de secours contient toutes les tables, toutes les entreprises, tous les utilisateurs, toutes les données métier, les journaux et les empreintes d’authentification. Son mot de passe est redemandé avant sa création.</p>
         <p class="tip"><strong>À conserver séparément :</strong> la valeur exacte de <code>APP_PIN_PEPPER</code> dans les secrets Streamlit ne se trouve pas dans PostgreSQL. Elle doit être sauvegardée à part avec l’archive complète pour que les PIN continuent de fonctionner après une restauration.</p>
         <p class="tip"><strong>Remplacement protégé :</strong> l’import d’une archive remplace les prospects, contacts, actions et commentaires uniquement après trois confirmations du PIN entreprise et une confirmation du mot de passe administrateur. Les comptes, PIN, mots de passe et journaux de sécurité ne sont jamais remplacés.</p>
@@ -228,7 +243,21 @@
         </div>
         <h3>Come back faster</h3>
         <p>Under “Help”, create and download your personal <code>.nexstep</code> access file. On your next visit, open “Open with my access file” and select it. It contains no PIN or password and can be revoked from NexStep.</p>
+        <p>Under “Help”, “My contact details” also lets you optionally add, edit or remove your email address and phone number.</p>
         <p>If you forget your password, enter both PINs first and request a reset. A company administrator can approve it, then you choose a new password on your next sign-in.</p>
+      </section>
+
+      <section>
+        <h2>📱 Android application</h2>
+        <p>The mobile application has its own Android screens: it opens neither Streamlit nor a browser. It uses the same prospects, actions and access rules as NexStep on the Web. A test APK may ask the administrator once for the public Publishable key; the final APK distributed to agents is already configured.</p>
+        <ul>
+          <li>Enter the company PIN and agent PIN first. NexStep then asks for the usual password or lets you create it during the first sign-in.</li>
+          <li>Use “Show entered PINs and passwords” to check the characters before continuing.</li>
+          <li>After the first sign-in, Android encrypts the session and can keep it open for 30 days. PINs and passwords are not stored.</li>
+          <li>Phone, Calendar and scale.ag links open in the appropriate application.</li>
+          <li>Excel, ICS and authorized backup files are saved under <strong>Downloads/NexStep</strong>.</li>
+          <li>An Internet connection is still required to synchronize shared Supabase data.</li>
+        </ul>
       </section>
 
       <section>
@@ -290,6 +319,7 @@
       <section>
         <h2>⚙️ Administration</h2>
         <p>Administration appears directly in the menu for authorized roles. A company administrator can approve password reset requests and manage the CSV archive for their own company.</p>
+        <p>The scale.ag global administrator sees password reset requests from every company, including the company name. They can also edit any user’s email address and phone number from the “Users” tab.</p>
         <p>The scale.ag super administrator also has “Full backup”. This disaster-recovery archive contains every table, company, user, business record, log and stored authentication hash. The administrator password is required again before it is created.</p>
         <p class="tip"><strong>Keep separately:</strong> the exact <code>APP_PIN_PEPPER</code> value from Streamlit secrets is not stored in PostgreSQL. Preserve it alongside the full archive so restored PINs keep working.</p>
         <p class="tip"><strong>Protected replacement:</strong> importing an archive requires the company PIN three times and the administrator password once. Accounts, PINs, passwords and security logs are never replaced.</p>
