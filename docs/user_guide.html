@@ -155,6 +155,8 @@
           <li>Après la première connexion, la session est chiffrée par le téléphone et peut rester ouverte pendant 30 jours. Les PIN et le mot de passe ne sont pas enregistrés.</li>
           <li>Les liens de téléphone, Agenda et scale.ag s’ouvrent dans l’application adaptée.</li>
           <li>Les fichiers Excel, ICS et les sauvegardes autorisées sont enregistrés dans <strong>Téléchargements/NexStep</strong>.</li>
+          <li>Après avoir indiqué le résultat d’une action, une suggestion fondée sur l’historique apparaît avant les quatre choix. Elle reste facultative et ne modifie aucune donnée automatiquement.</li>
+          <li>Pour un administrateur, « Admin » est placé juste après « À faire maintenant ». La boîte de réinitialisation peut être actualisée avec ↻.</li>
           <li>Une connexion Internet reste nécessaire pour synchroniser les données communes avec Supabase.</li>
         </ul>
       </section>
@@ -166,7 +168,7 @@
           <li><strong>☎ Numéro de téléphone :</strong> sur mobile, touche le numéro pour lancer l’appel.</li>
           <li><strong>✓ C’est fait :</strong> commence le parcours d’enregistrement.</li>
           <li><strong>→ Plus tard :</strong> met cette action de côté pendant la session et montre la suivante.</li>
-          <li><strong>Plus d’options :</strong> ajoute un commentaire, ouvre la fiche ou transfère l’action.</li>
+          <li><strong>Plus d’options :</strong> ajoute un nouveau contact avec sa fonction et ses coordonnées, ajoute un commentaire, ouvre la fiche ou transfère l’action.</li>
         </ul>
       </section>
 
@@ -178,6 +180,7 @@
           <div class="step"><span class="number">3</span><h3>Date</h3><p>Aujourd’hui, demain, dans 3 jours, dans 7 jours ou une autre date.</p></div>
           <div class="step"><span class="number">4</span><h3>Confirmation</h3><p>Vérifie le résumé, puis enregistre et passe à l’action suivante.</p></div>
         </div>
+        <p class="tip"><strong>Suggestion intelligente :</strong> après le résultat, NexStep peut conseiller l’une des quatre suites déjà affichées. Le conseil s’appuie sur l’historique des actions, commentaires, réponses et échéances ratées. Il peut proposer d’arrêter un suivi devenu trop coûteux, mais ne change jamais le prospect ni ses données automatiquement.</p>
         <p class="tip"><strong>Les précisions sont facultatives.</strong> Ouvre « Ajouter des précisions » uniquement pour noter un compte rendu, un obstacle, une décision ou confier la suite à un autre agent.</p>
       </section>
 
@@ -205,6 +208,17 @@
       </section>
 
       <section>
+        <h2>✏️ Modifier ou relancer un lead</h2>
+        <p>Ouvrez sa fiche dans le 📊 Lead Board, puis dépliez « Plus d’options pour ce lead ». Un agent peut corriger les leads dont il a la charge ; l’administrateur d’entreprise peut corriger tous les leads de son entreprise.</p>
+        <ul>
+          <li>Corrigez le nom, la ville, le contexte ou les coordonnées et fonctions des contacts existants. Saisissez votre mot de passe pour enregistrer.</li>
+          <li>Si le suivi avait été arrêté, indiquez pourquoi vous le reprenez, choisissez une nouvelle action et son échéance, puis validez. La raison reste visible dans les commentaires, avec cette action.</li>
+          <li>Les commentaires ajoutés pendant « Fait » affichent aussi le nom de l’action concernée.</li>
+        </ul>
+        <p class="tip">À la dernière étape de « Fait », ouvrez les détails facultatifs pour ajouter une nouvelle personne rencontrée, sa fonction et au moins un moyen de la joindre. Les contacts précédents restent conservés.</p>
+      </section>
+
+      <section>
         <h2>✅ Mes actions</h2>
         <p>Cette vue sert à retrouver une action précise. Utilise la recherche ou le filtre d’urgence, puis touche <strong>Traiter</strong> pour ouvrir cette action dans le parcours guidé.</p>
         <p>Pour une action avec échéance, touche <strong>Ajouter à Google Agenda</strong> ou télécharge le fichier calendrier <code>.ics</code>. Le rendez-vous comprend un rappel un jour avant.</p>
@@ -220,6 +234,7 @@
       <section>
         <h2>⚙️ Administration</h2>
         <p>Le bouton Administration apparaît directement dans le menu des rôles autorisés. Un administrateur d’entreprise peut approuver ou refuser les demandes de nouveau mot de passe et gérer l’archive CSV de son entreprise.</p>
+        <p>Le super-administrateur scale.ag peut choisir, dans « Administration → Liens », quel agent actif devient administrateur de chaque entreprise. Le rôle peut aussi être retiré.</p>
         <p>Le super-administrateur scale.ag voit les demandes de réinitialisation de toutes les entreprises, avec le nom de l’entreprise concernée. Il peut également modifier l’e-mail et le téléphone de n’importe quel utilisateur depuis l’onglet « Utilisateurs ».</p>
         <p>Le super administrateur scale.ag dispose en plus de « Sauvegarde complète ». Cette archive de secours contient toutes les tables, toutes les entreprises, tous les utilisateurs, toutes les données métier, les journaux et les empreintes d’authentification. Son mot de passe est redemandé avant sa création.</p>
         <p class="tip"><strong>À conserver séparément :</strong> la valeur exacte de <code>APP_PIN_PEPPER</code> dans les secrets Streamlit ne se trouve pas dans PostgreSQL. Elle doit être sauvegardée à part avec l’archive complète pour que les PIN continuent de fonctionner après une restauration.</p>
@@ -256,6 +271,8 @@
           <li>After the first sign-in, Android encrypts the session and can keep it open for 30 days. PINs and passwords are not stored.</li>
           <li>Phone, Calendar and scale.ag links open in the appropriate application.</li>
           <li>Excel, ICS and authorized backup files are saved under <strong>Downloads/NexStep</strong>.</li>
+          <li>After an action result is entered, a history-based suggestion appears before the four next-step choices. It remains optional and never changes data automatically.</li>
+          <li>For administrators, “Admin” appears immediately after “Do now”. Refresh the reset inbox with ↻.</li>
           <li>An Internet connection is still required to synchronize shared Supabase data.</li>
         </ul>
       </section>
@@ -267,7 +284,7 @@
           <li><strong>☎ Phone number:</strong> tap it on mobile to start a call.</li>
           <li><strong>✓ Done:</strong> start the short completion flow.</li>
           <li><strong>→ Later:</strong> set this action aside for the current session.</li>
-          <li><strong>More options:</strong> add a comment, open the file or transfer the action.</li>
+          <li><strong>More options:</strong> add a new contact with their role and contact details, add a comment, open the record or transfer the action.</li>
         </ul>
       </section>
 
@@ -279,6 +296,7 @@
           <div class="step"><span class="number">3</span><h3>Date</h3><p>Today, tomorrow, in 3 days, in 7 days or another date.</p></div>
           <div class="step"><span class="number">4</span><h3>Confirm</h3><p>Check the summary, save it and move to the next action.</p></div>
         </div>
+        <p class="tip"><strong>Smart suggestion:</strong> after the result, NexStep may recommend one of the same four next-step choices. It uses action history, comments, responses and missed deadlines. It may suggest ending an unproductive follow-up, but it never changes the prospect or any data automatically.</p>
         <p class="tip"><strong>Details are optional.</strong> Open “Add details” only when you need to record a note, obstacle, decision or assign the next step to someone else.</p>
       </section>
 
@@ -304,6 +322,17 @@
       </section>
 
       <section>
+        <h2>✏️ Edit or reactivate a lead</h2>
+        <p>Open the lead in the 📊 Lead Board, then expand “More options for this lead”. An agent may edit their own leads; a company administrator may edit every lead in their company.</p>
+        <ul>
+          <li>Correct the name, city, context, or existing contacts’ details and roles. Enter your password to save.</li>
+          <li>When follow-up had stopped, explain why you are restarting it, choose a new action and due date, then save. The reason appears in comments alongside the action.</li>
+          <li>Comments added while marking an action “Done” also display the related action.</li>
+        </ul>
+        <p class="tip">At the final “Done” step, open optional details to add a newly met person, their role and at least one way to reach them. Earlier contacts stay in the record.</p>
+      </section>
+
+      <section>
         <h2>✅ My actions</h2>
         <p>Use this view to find a specific action. Search or filter, then tap <strong>Handle</strong> to open it in the guided flow.</p>
         <p>For a dated action, add it to Google Calendar or download the <code>.ics</code> calendar file. It includes a reminder one day beforehand.</p>
@@ -319,6 +348,7 @@
       <section>
         <h2>⚙️ Administration</h2>
         <p>Administration appears directly in the menu for authorized roles. A company administrator can approve password reset requests and manage the CSV archive for their own company.</p>
+        <p>In “Administration → Links”, the scale.ag global administrator can choose an active agent to administer each company and can later remove that role.</p>
         <p>The scale.ag global administrator sees password reset requests from every company, including the company name. They can also edit any user’s email address and phone number from the “Users” tab.</p>
         <p>The scale.ag super administrator also has “Full backup”. This disaster-recovery archive contains every table, company, user, business record, log and stored authentication hash. The administrator password is required again before it is created.</p>
         <p class="tip"><strong>Keep separately:</strong> the exact <code>APP_PIN_PEPPER</code> value from Streamlit secrets is not stored in PostgreSQL. Preserve it alongside the full archive so restored PINs keep working.</p>

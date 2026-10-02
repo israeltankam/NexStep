@@ -1,5 +1,6 @@
 import { canViewTeam, isAdministrator, sessionProfile } from "./auth.ts";
 import { verifyStoredSecret } from "./crypto.ts";
+import { recommendLead } from "./ontology.ts";
 import type { ApiResult, JsonObject, SessionContext } from "./types.ts";
 import { text } from "./types.ts";
 
@@ -180,6 +181,10 @@ export async function buildLeadBoard(
       actionTypeName: actionTypes.get(text(action.action_type_id))?.name || "",
       urgencyColor: urgencyColor(action.due_date),
     }));
+    const actionTitles = new Map(leadActions.map((action) => [text(action.id), text(action.title)]));
+    const commentsWithActions = leadComments.map((comment) => ({
+      ...comment, actionTitle: actionTitles.get(text(comment.action_id)) || "",
+    }));
     const pending = leadActions
       .filter((action) => action.status === "pending")
       .sort((left, right) => {
@@ -208,7 +213,7 @@ export async function buildLeadBoard(
       nextActionTitle: nextAction?.title || "",
       nextDueDate: nextAction?.due_date || null,
       urgencyColor: nextAction?.urgencyColor || "gray",
-      comments: leadComments,
+      comments: commentsWithActions,
       latestComment: leadComments[0]?.body || "",
       commentCount: leadComments.length,
     };
@@ -254,6 +259,50 @@ export async function nextAction(context: SessionContext): Promise<ApiResult> {
   const result = await actionList(context);
   const actions = (result.data as JsonObject).actions as JsonObject[];
   return { data: { action: actions[0] ?? null } };
+}
+
+export async function leadRecommendation(
+  context: SessionContext,
+  payload: JsonObject,
+): Promise<ApiResult> {
+  const leadId = text(payload.leadId);
+  if (!leadId) return { status: 400, error: "lead_required" };
+  const organizationId = text(context.organization.id);
+  const leadResult = await context.db.from("leads").select(
+    "id,organization_id,churn_flag,created_at,updated_at",
+  ).eq("id", leadId).eq("organization_id", organizationId).maybeSingle();
+  if (leadResult.error) throw new Error("database_error");
+  if (!leadResult.data) return { status: 404, error: "lead_not_found" };
+
+  const [actions, touchpoints, comments, actionTypes] = await Promise.all([
+    rows(context.db.from("actions").select("*").eq("organization_id", organizationId)
+      .eq("lead_id", leadId).order("created_at").limit(2000)),
+    rows(context.db.from("touchpoints").select("*").eq("organization_id", organizationId)
+      .eq("lead_id", leadId).order("occurred_at").limit(2000)),
+    rows(context.db.from("comments").select("*").eq("organization_id", organizationId)
+      .eq("lead_id", leadId).order("created_at").limit(2000)),
+    rows(context.db.from("action_types").select("id,name").eq(
+      "organization_id",
+      organizationId,
+    ).limit(1000)),
+  ]);
+  const actionTypesById = mapBy(actionTypes, "id");
+  const decoratedActions = actions.map((action) => ({
+    ...action,
+    actionTypeName: actionTypesById.get(text(action.action_type_id))?.name || "",
+  }));
+  const allowedOutcomes = new Set(["interested", "callback", "unavailable", "refusal"]);
+  const requestedOutcome = text(payload.currentOutcomeKey);
+  const recommendation = recommendLead(
+    {
+      lead: leadResult.data as JsonObject,
+      actions: decoratedActions,
+      touchpoints,
+      comments,
+    },
+    allowedOutcomes.has(requestedOutcome) ? requestedOutcome : "",
+  );
+  return { data: { recommendation } };
 }
 
 export async function pendingPasswordResets(context: SessionContext): Promise<ApiResult> {

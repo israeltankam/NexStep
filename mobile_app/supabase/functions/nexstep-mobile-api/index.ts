@@ -5,11 +5,14 @@ import {
   backup,
   bootstrap,
   leadBoard,
+  leadRecommendation,
   nextAction,
   pendingPasswordResets,
 } from "./_shared/read.ts";
 import type { ApiResult, JsonObject } from "./_shared/types.ts";
+import { companyAgents, reactivateLead, setCompanyAdmin, updateLead } from "./_shared/lead_management.ts";
 import {
+  addContact,
   addComment,
   completeAction,
   createLead,
@@ -72,6 +75,16 @@ Deno.serve(async (request: Request): Promise<Response> => {
           return response(await actionList(context));
         case "lead_board":
           return response(await leadBoard(context, payload));
+        case "update_lead":
+          return response(await updateLead(context, payload));
+        case "reactivate_lead":
+          return response(await reactivateLead(context, payload));
+        case "company_agents":
+          return response(await companyAgents(context));
+        case "set_company_admin":
+          return response(await setCompanyAdmin(context, payload));
+        case "lead_recommendation":
+          return response(await leadRecommendation(context, payload));
         case "create_lead":
           return response(await createLead(context, payload));
         case "complete_action":
@@ -80,6 +93,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
           return response(await transferAction(context, payload));
         case "add_comment":
           return response(await addComment(context, payload));
+        case "add_contact":
+          return response(await addContact(context, payload));
         case "set_language":
           return response(await setLanguage(context, payload));
         case "pending_password_resets":

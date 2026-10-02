@@ -70,6 +70,7 @@ def build_lead_board(
         conn,
         f"""
         SELECT l.id, l.name, l.owner_org_user_id, l.city, l.address, l.score,
+               l.churn_flag,
                l.source, l.obstacle, l.context_full, l.created_at,
                ps.name AS stage_name, ls.name AS status_name,
                cc.name AS category_name, u.display_name AS owner_name
@@ -115,8 +116,9 @@ def build_lead_board(
     for row in _rows_for_ids(
         conn,
         """
-        SELECT c.*, u.display_name AS author_name
+        SELECT c.*, u.display_name AS author_name, a.title AS action_title
         FROM comments c
+        LEFT JOIN actions a ON a.id = c.action_id AND a.lead_id = c.lead_id
         LEFT JOIN organization_users ou ON ou.id = c.org_user_id
         LEFT JOIN users u ON u.id = ou.user_id
         WHERE c.lead_id IN

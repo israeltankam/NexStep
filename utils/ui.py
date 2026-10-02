@@ -197,6 +197,7 @@ def render_comments(
     *,
     max_preview: int = 220,
     empty_label: str = "Aucun commentaire visible.",
+    language: str = "fr",
 ) -> None:
     if not comments:
         st.caption(empty_label)
@@ -204,14 +205,18 @@ def render_comments(
     for comment in comments:
         created_at = html.escape(str(comment["created_at"] or "")[:16])
         author = html.escape(str(comment["author_name"] or "NexStep"))
-        badge = html.escape(comment_badge(comment))
+        badge = html.escape(comment_badge(comment, language))
         body = html.escape(truncate(str(comment["body"] or ""), max_preview))
+        action_title = html.escape(str(comment["action_title"] or "")) if "action_title" in comment.keys() else ""
+        action_line = (f"<div class='nex-muted'>{'Action liée' if language == 'fr' else 'Related action'}: {action_title}</div>"
+                       if action_title else "")
         st.markdown(
             f"""
             <div class="nex-comment">
               <div>{urgency_badge('green', badge)}
               <span class="nex-muted">{created_at} · {author}</span></div>
               <div>{body}</div>
+              {action_line}
             </div>
             """,
             unsafe_allow_html=True,

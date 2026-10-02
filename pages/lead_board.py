@@ -6,6 +6,7 @@ import sqlite3
 
 import pandas as pd
 import streamlit as st
+from components.lead_management import render as render_lead_management
 
 from components.calendar_tools import render_calendar_tools
 from services.comment_service import add_comment
@@ -238,13 +239,15 @@ def _render_selected_lead(
             lead["comments"],
             max_preview=2000,
             empty_label=t("comments.none", language),
+            language=language,
         )
+    render_lead_management(conn, session, lead, language)
 
 
 def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
     language = str(session.get("language", "fr"))
     organization_id = str(session["organization_id"])
-    can_view_team = bool(session.get("can_view_team"))
+    can_view_team = bool(session.get("can_view_team")) or bool(session.get("is_global_admin")) or str(session.get("role")) in {"company_admin", "super_admin"}
     members = list_team_members(conn, organization_id)
     allowed_owners = None if can_view_team else [str(session["org_user_id"])]
 

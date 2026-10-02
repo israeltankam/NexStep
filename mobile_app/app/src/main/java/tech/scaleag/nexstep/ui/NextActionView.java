@@ -134,6 +134,9 @@ public final class NextActionView extends LinearLayout {
         content.addView(later);
 
         content.addView(UiKit.heading(context, context.getString(R.string.more_options)));
+        Button contact = UiKit.commandButton(context, "➕  " + context.getString(R.string.add_contact));
+        contact.setOnClickListener(view -> workflow.addContact(action, this::load));
+        content.addView(contact);
         Button comment = UiKit.commandButton(context, "💬  " + context.getString(R.string.add_comment));
         comment.setOnClickListener(view -> workflow.addComment(action, this::load));
         content.addView(comment);

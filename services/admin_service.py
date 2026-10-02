@@ -27,13 +27,32 @@ def list_org_links(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return fetch_all(
         conn,
         """
-        SELECT ou.id, o.name AS organization_name, u.display_name, ou.role, ou.can_view_team, ou.is_active, ou.created_at
+        SELECT ou.id, ou.organization_id, o.name AS organization_name, u.display_name, ou.role, ou.can_view_team, ou.is_active, ou.created_at
         FROM organization_users ou
         JOIN organizations o ON o.id = ou.organization_id
         JOIN users u ON u.id = ou.user_id
         ORDER BY o.name, u.display_name
         """,
     )
+
+
+def set_company_administrator(conn: sqlite3.Connection, *, actor_user_id: str,
+                              org_user_id: str, enabled: bool) -> None:
+    """Let the global administrator promote or demote an existing company agent."""
+    actor = fetch_one(conn, "SELECT is_global_admin, is_active FROM users WHERE id = ?", (actor_user_id,))
+    if not actor or not actor["is_global_admin"] or not actor["is_active"]:
+        raise PermissionError("forbidden")
+    target = fetch_one(conn, "SELECT organization_id, role, is_active FROM organization_users WHERE id = ?", (org_user_id,))
+    if not target or not target["is_active"] or target["role"] not in {"agent", "company_admin"}:
+        raise ValueError("invalid_agent")
+    new_role = "company_admin" if enabled else "agent"
+    with transaction(conn):
+        update_by_id(conn, "organization_users", org_user_id,
+                     {"role": new_role, "can_view_team": 1 if enabled else 0,
+                      "updated_at": utcnow_iso()})
+        log_event(conn, organization_id=target["organization_id"], actor_user_id=actor_user_id,
+                  entity_type="organization_user", entity_id=org_user_id,
+                  action="set_company_administrator", after={"role": new_role})
 
 
 def create_organization(

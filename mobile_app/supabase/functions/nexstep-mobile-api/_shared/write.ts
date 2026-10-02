@@ -1,6 +1,7 @@
 import { hmacHex, normalizePin, verifyStoredSecret } from "./crypto.ts";
 import { isAdministrator } from "./auth.ts";
 import { pinPepper, requireData } from "./client.ts";
+import { parseContactPayload } from "./contact.ts";
 import type { ApiResult, JsonObject, SessionContext } from "./types.ts";
 import { newId, nowIso, text } from "./types.ts";
 
@@ -81,6 +82,51 @@ export async function addComment(
   return { data: requireData(result) };
 }
 
+export async function addContact(
+  context: SessionContext,
+  payload: JsonObject,
+): Promise<ApiResult> {
+  const parsed = parseContactPayload(payload);
+  if (parsed.error) return { status: 400, error: parsed.error };
+
+  const leadId = text(payload.leadId);
+  const actionId = text(payload.actionId);
+  if (!leadId || !actionId) return { status: 400, error: "contact_context_required" };
+
+  const organizationId = text(context.organization.id);
+  const [leadResult, actionResult] = await Promise.all([
+    context.db.from("leads").select("id").eq("id", leadId)
+      .eq("organization_id", organizationId).eq("is_archived", 0).maybeSingle(),
+    context.db.from("actions").select("id,lead_id,assigned_to_org_user_id")
+      .eq("id", actionId).eq("organization_id", organizationId).maybeSingle(),
+  ]);
+  if (leadResult.error || actionResult.error) throw new Error("database_error");
+  if (!leadResult.data || !actionResult.data || actionResult.data.lead_id !== leadId) {
+    return { status: 404, error: "lead_not_found" };
+  }
+  if (
+    text(actionResult.data.assigned_to_org_user_id) !== text(context.orgUser.id) &&
+    !isAdministrator(context)
+  ) {
+    return { status: 403, error: "forbidden" };
+  }
+
+  const existingResult = await context.db.from("contacts").select("id")
+    .eq("lead_id", leadId).limit(1);
+  if (existingResult.error) throw new Error("database_error");
+  const now = nowIso();
+  const contact = requireData(await context.db.from("contacts").insert({
+    id: newId(),
+    lead_id: leadId,
+    ...parsed.contact,
+    is_primary: (existingResult.data ?? []).length === 0 ? 1 : 0,
+    created_at: now,
+    updated_at: now,
+  }).select("*").single());
+
+  return { data: { contact } };
+}
+
 async function resolveTarget(
   context: SessionContext,
   agentPin: string,
@@ -112,6 +158,22 @@ export async function completeAction(
   context: SessionContext,
   payload: JsonObject,
 ): Promise<ApiResult> {
+  const person = text(payload.contactName).trim();
+  const role = text(payload.contactRole).trim();
+  const phone = text(payload.contactPhone).trim();
+  const email = text(payload.contactEmail).trim();
+  const whatsapp = text(payload.contactWhatsapp).trim();
+  const addingPerson = [person, role, phone, email, whatsapp].some(Boolean);
+  if (addingPerson && (!person || !role || ![phone, email, whatsapp].some(Boolean))) {
+    return { status: 400, error: "touchpoint_required" };
+  }
+  if (person.length > 200 || role.length > 200 || phone.length > 80 ||
+      email.length > 254 || whatsapp.length > 80) {
+    return { status: 400, error: "field_too_long" };
+  }
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { status: 400, error: "invalid_email" };
+  }
   const nextActionKey = text(payload.nextActionKey);
   const nextActionType = actionNames[nextActionKey] ?? null;
   let nextAssigned = text(context.orgUser.id);
@@ -122,13 +184,17 @@ export async function completeAction(
     nextAssigned = text(target.id);
   }
 
-  const result = await context.db.rpc("nexstep_mobile_complete_action", {
+  const result = await context.db.rpc("nexstep_mobile_complete_action_v2", {
     p_organization_id: context.organization.id,
     p_actor_org_user_id: context.orgUser.id,
     p_action_id: text(payload.actionId),
     p_outcome: outcomeNames[text(payload.outcomeKey)] || text(payload.outcomeKey),
     p_note: text(payload.note),
     p_contact_name: text(payload.contactName),
+    p_contact_role: text(payload.contactRole),
+    p_contact_phone: text(payload.contactPhone),
+    p_contact_email: text(payload.contactEmail),
+    p_contact_whatsapp: text(payload.contactWhatsapp),
     p_obstacle: text(payload.obstacle),
     p_decision: text(payload.decision),
     p_create_next: nextActionType !== null,

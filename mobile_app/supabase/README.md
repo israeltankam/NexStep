@@ -15,6 +15,12 @@ utilisée en production. Elle ne remplace aucune table et n’efface aucune donn
 
 ## 1. Exécuter la migration additive
 
+Pour la version mobile **1.0.6**, exécuter ensuite dans le même SQL Editor
+`supabase/database/20261002_lead_management.sql`. Cette migration ajoute des
+fonctions privées pour les nouveaux parcours, sans modifier ni effacer les
+tables existantes. **Exécuter le SQL avant de redéployer l’Edge Function et
+d’installer la nouvelle APK.**
+
 1. Ouvrir le projet dans le Dashboard Supabase.
 2. Ouvrir **SQL Editor** puis créer une nouvelle requête.
 3. Ouvrir localement

@@ -53,9 +53,13 @@ $requiredFiles = @(
     "supabase/database/20260730_native_mobile_transactions.sql",
     "supabase/functions/nexstep-mobile-api/index.ts",
     "supabase/functions/nexstep-mobile-api/_shared/auth.ts",
+    "supabase/functions/nexstep-mobile-api/_shared/contact.ts",
+    "supabase/functions/nexstep-mobile-api/_shared/ontology.ts",
     "supabase/functions/nexstep-mobile-api/_shared/read.ts",
     "supabase/functions/nexstep-mobile-api/_shared/write.ts",
-    "supabase/tests/crypto_test.ts"
+    "supabase/tests/crypto_test.ts",
+    "supabase/tests/contact_test.ts",
+    "supabase/tests/ontology_test.ts"
 )
 
 foreach ($relativePath in $requiredFiles) {
@@ -82,9 +86,17 @@ $mainActivity = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/MainActi
 $loginView = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/ui/LoginView.java"
 $apiClient = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/data/NexStepApiClient.java"
 $sessionStore = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/data/SessionStore.java"
+$actionWorkflow = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/ui/ActionWorkflow.java"
+$nextActionView = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/ui/NextActionView.java"
+$adminView = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/ui/AdminView.java"
+$mainShell = Get-ProjectText "app/src/main/java/tech/scaleag/nexstep/ui/MainShellView.java"
 $appBuild = Get-ProjectText "app/build.gradle.kts"
 $edgeIndex = Get-ProjectText "supabase/functions/nexstep-mobile-api/index.ts"
 $edgeAuth = Get-ProjectText "supabase/functions/nexstep-mobile-api/_shared/auth.ts"
+$edgeContact = Get-ProjectText "supabase/functions/nexstep-mobile-api/_shared/contact.ts"
+$edgeOntology = Get-ProjectText "supabase/functions/nexstep-mobile-api/_shared/ontology.ts"
+$edgeRead = Get-ProjectText "supabase/functions/nexstep-mobile-api/_shared/read.ts"
+$edgeWrite = Get-ProjectText "supabase/functions/nexstep-mobile-api/_shared/write.ts"
 $migration = Get-ProjectText "supabase/database/20260730_native_mobile_transactions.sql"
 $migrationExecutable = (
     $migration -split "\r?\n" |
@@ -122,11 +134,27 @@ Test-Condition ($appBuild.Contains("releaseSigningReady")) "Environment-only rel
 Test-Condition ($edgeIndex.Contains("Deno.serve")) "The Edge Function request handler is missing."
 Test-Condition ($edgeIndex.Contains("authenticate(db, request)")) "Authenticated Edge Function routing is missing."
 Test-Condition ($edgeIndex.Contains('operation === "identify_login"')) "PIN identification routing is missing."
+Test-Condition ($edgeIndex.Contains('case "lead_recommendation"')) "Lead-intelligence routing is missing."
+Test-Condition ($edgeIndex.Contains('case "add_contact"')) "Existing-lead contact routing is missing."
 Test-Condition ($edgeAuth.Contains("auth_sessions")) "Revocable server-side sessions are missing."
 Test-Condition ($edgeAuth.Contains("auth_attempts")) "Authentication rate limiting is missing."
 Test-Condition ($edgeAuth.Contains("identifyLogin")) "Password-mode identification is missing."
 Test-Condition ($edgeIndex.Contains("pendingPasswordResets")) "Password-reset inbox routing is missing."
 Test-Condition ($edgeAuth.Contains("is_global_admin")) "Global administrator authentication is missing."
+Test-Condition ($edgeRead.Contains("leadRecommendation")) "Lead-intelligence history loading is missing."
+Test-Condition ($edgeOntology.Contains("CHURN_POLICIES")) "Mobile churn ontology policies are missing."
+Test-Condition ($edgeOntology.Contains("recentPositive")) "Positive-signal churn protection is missing."
+Test-Condition ($edgeOntology.Contains("advisory only")) "Read-only intelligence contract is missing."
+Test-Condition ($actionWorkflow.Contains('api.call("lead_recommendation"')) "Android recommendation call is missing."
+Test-Condition ($actionWorkflow.Contains("intelligence_churn_suggestion")) "Android churn suggestion is missing."
+Test-Condition ($actionWorkflow.Contains('api.call("add_contact"')) "Android contact creation call is missing."
+Test-Condition ($nextActionView.Contains("R.string.add_contact")) "The mobile More options contact button is missing."
+Test-Condition ($edgeContact.Contains("parseContactPayload")) "Mobile contact normalization is missing."
+Test-Condition ($edgeWrite.Contains("assigned_to_org_user_id")) "Mobile contact action authorization is missing."
+Test-Condition ($adminView.Contains("refresh_reset_requests")) "Password-reset refresh control is missing."
+Test-Condition `
+    ($mainShell.IndexOf('R.string.nav_admin') -lt $mainShell.IndexOf('R.string.nav_add')) `
+    "Administration is not visible early enough in mobile navigation."
 Test-Condition `
     ((Get-ProjectText "supabase/functions/nexstep-mobile-api/_shared/read.ts").Contains(
         "organizationName"

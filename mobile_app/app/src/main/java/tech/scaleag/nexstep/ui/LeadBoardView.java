@@ -262,9 +262,22 @@ public final class LeadBoardView extends LinearLayout {
                 JSONObject comment = comments.optJSONObject(index);
                 if (comment == null) continue;
                 detail.addView(UiKit.body(context, comment.optString("body")));
+                if (!comment.optString("actionTitle").isBlank()) {
+                    detail.addView(UiKit.caption(context, context.getString(
+                        R.string.related_action, comment.optString("actionTitle"))));
+                }
                 detail.addView(UiKit.caption(context, comment.optString("created_at")));
                 detail.addView(UiKit.divider(context));
             }
+        }
+
+        boolean canEdit = session.isAdministrator() ||
+            session.profile().optString("orgUserId").equals(lead.optString("owner_org_user_id"));
+        if (canEdit) {
+            Button manage = UiKit.commandButton(context, context.getString(R.string.more_options));
+            manage.setOnClickListener(view -> new LeadManagementDialogs(
+                context, api, session, bootstrap, this::load).show(lead));
+            detail.addView(manage);
         }
 
         new AlertDialog.Builder(context)

@@ -1,5 +1,10 @@
 # NexStep Mobile
 
+La version **1.0.6** nécessite la migration additive
+`supabase/database/20261002_lead_management.sql` et le redéploiement de
+`nexstep-mobile-api` avant l’installation de l’APK. La base PostgreSQL et ses
+secrets restent exclusivement côté Supabase.
+
 NexStep Mobile est une véritable application Android native. Elle ne charge ni
 Streamlit ni une page Web : connexion, prochaine action, création de prospect,
 Lead Board, actions et administration sont des écrans Android intégrés à l’APK.
@@ -153,15 +158,21 @@ hors de Git.
 3. Se connecter avec les PIN et mot de passe habituels.
 4. Fermer et rouvrir l’application : la session chiffrée doit être reprise.
 5. Créer un prospect avec plusieurs contacts et une première action.
-6. Terminer, commenter et transférer une action.
-7. Vérifier le Lead Board, ses filtres et son export Excel.
-8. Exporter une action vers Agenda ou en fichier ICS.
-9. Pour un administrateur, traiter une demande de mot de passe et télécharger
-   la sauvegarde autorisée.
-10. Pour le super administrateur, vérifier que la sauvegarde globale exige de
+6. Dans « Plus d’options », ajouter un nouveau contact à un prospect existant,
+   puis vérifier qu’il apparaît dans le Lead Board.
+7. Terminer, commenter et transférer une action.
+8. Vérifier le Lead Board, ses filtres et son export Excel.
+9. Exporter une action vers Agenda ou en fichier ICS.
+10. Pour un administrateur, ouvrir le bouton **Admin**, désormais placé juste
+   après « Maintenant », actualiser la boîte si nécessaire, traiter une demande
+   de mot de passe et télécharger la sauvegarde autorisée.
+11. Pour le super administrateur, vérifier que la sauvegarde globale exige de
    nouveau son mot de passe.
-11. Vérifier qu’un agent ne voit ni les données d’une autre entreprise ni les
+12. Vérifier qu’un agent ne voit ni les données d’une autre entreprise ni les
     commandes d’administration.
+13. Terminer une action et vérifier que la suggestion ontologique apparaît
+    avant les quatre choix de prochaine action, sans sélectionner à la place de
+    l’agent.
 
 ## Mises à jour
 
@@ -172,6 +183,9 @@ hors de Git.
 - Une évolution Streamlit n’est pas automatiquement répercutée dans le mobile :
   ce sont désormais deux interfaces indépendantes partageant le même métier et
   la même base.
+- La version `1.0.5` ajoute les contacts depuis « Plus d’options », conserve la
+  projection mobile de l’ontologie et rend la boîte de réinitialisation
+  immédiatement visible aux administrateurs.
 
 ---
 

@@ -1,5 +1,28 @@
 # Journal de modifications NexStep
 
+## 2026-10-02
+
+- Ajout de l’attribution et du retrait du rôle administrateur d’entreprise par l’administrateur général scale.ag, avec contrôle serveur et audit.
+- Modification discrète des leads et contacts existants dans le Lead Board : l’agent propriétaire ou l’administrateur d’entreprise confirme chaque édition par mot de passe.
+- Ajout d’une personne à contacter, de sa fonction et d’au moins un moyen de la joindre dans les détails facultatifs de « Fait », avec rattachement à l’historique de l’action.
+- Réactivation d’un lead arrêté par une nouvelle action et une raison enregistrée dans l’historique ; le churn est retiré lors de la relance.
+- Affichage de l’action liée dans la liste des commentaires, sur Streamlit et Android.
+- Ajout d’une migration SQL additive, de libellés FR/EN et de la documentation utilisateur ; Android passe en version `1.0.6` (`versionCode 7`).
+- Vérification de 100 tests historiques et 13 tests d’intégration ciblés, 15 tests Deno, audit FR/EN, 847 contrôles mobiles, typage TypeScript, Android Lint et compilation APK. Les bases de test temporaires ont été supprimées.
+
+## 2026-08-11
+
+- Ajout d'une intelligence logiciste fondée sur une ontologie RDF/OWL : l'historique des actions, commentaires, résultats et échéances est transformé en signaux métier explicables.
+- Ajout de suggestions conservatrices de churn pour les suivis durablement négatifs ou chronophages, avec protection systématique lorsqu'un signal positif récent existe.
+- Ajout d'une suggestion d'action parmi les quatre choix déjà présents, sans nouvel écran, sans clic supplémentaire et sans modification automatique des données.
+- Ajout des bibliothèques RDFLib et OWL-RL, de traductions françaises/anglaises, de contrôles dans la suite des 100 tests et de la documentation utilisateur bilingue.
+- Portage des mêmes signaux et politiques ontologiques dans l’Edge Function mobile, avec suggestion expliquée dans le parcours Android sans décision automatique.
+- Correction de la visibilité de l’administration mobile : le bouton Admin est désormais placé en deuxième position pour les comptes autorisés.
+- Ajout de l’actualisation et d’un message d’erreur explicite dans la boîte mobile des demandes de réinitialisation, avec maintien de la portée globale du super-administrateur scale.ag.
+- Ajout d’un formulaire de contact dans « Plus d’options » sur Streamlit et Android, afin d’enrichir un prospect à tout moment sans recréer sa fiche.
+- Ajout d’une opération mobile contrôlée par l’entreprise et l’action, sans migration SQL ni modification du schéma Supabase.
+- Passage de l’application Android en version `1.0.5` (`versionCode 6`).
+
 ## 2026-08-02
 
 - Correction de la boîte de réinitialisation : le super-administrateur scale.ag voit et traite les demandes de toutes les entreprises, tandis que chaque administrateur local reste limité à la sienne.

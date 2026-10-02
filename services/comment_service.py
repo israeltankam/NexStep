@@ -62,8 +62,9 @@ def list_comments_for_lead(conn: sqlite3.Connection, lead_id: str) -> list[sqlit
     return fetch_all(
         conn,
         """
-        SELECT c.*, u.display_name AS author_name
+        SELECT c.*, u.display_name AS author_name, a.title AS action_title
         FROM comments c
+        LEFT JOIN actions a ON a.id = c.action_id AND a.lead_id = c.lead_id
         LEFT JOIN organization_users ou ON ou.id = c.org_user_id
         LEFT JOIN users u ON u.id = ou.user_id
         WHERE c.lead_id = ?
@@ -77,8 +78,9 @@ def recent_comments_for_lead(conn: sqlite3.Connection, lead_id: str, limit: int 
     return fetch_all(
         conn,
         """
-        SELECT c.*, u.display_name AS author_name
+        SELECT c.*, u.display_name AS author_name, a.title AS action_title
         FROM comments c
+        LEFT JOIN actions a ON a.id = c.action_id AND a.lead_id = c.lead_id
         LEFT JOIN organization_users ou ON ou.id = c.org_user_id
         LEFT JOIN users u ON u.id = ou.user_id
         WHERE c.lead_id = ?
@@ -126,13 +128,10 @@ def search_comments(conn: sqlite3.Connection, organization_id: str, query: str) 
     )
 
 
-def comment_badge(comment: sqlite3.Row) -> str:
-    if comment["comment_type"] == "legacy_excel_a":
-        return "Import Excel · Ancien commentaire · Colonne a"
-    if comment["comment_type"] == "transfer_note":
-        return "Transfert"
-    if comment["comment_type"] == "action_note":
-        return "Action"
-    if comment["comment_type"] == "next_action_note":
-        return "Prochaine action"
-    return "Commentaire"
+def comment_badge(comment: sqlite3.Row, language: str = "fr") -> str:
+    """Translate badges for both new and imported historical comments."""
+    from utils.i18n import t
+    kind = str(comment["comment_type"] or "general")
+    supported = {"legacy_excel_a", "transfer_note", "action_note",
+                 "next_action_note", "reactivation_reason"}
+    return t(f"comments.badge.{kind if kind in supported else 'general'}", language)

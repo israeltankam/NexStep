@@ -34,6 +34,7 @@ from services.access_service import (
 )
 from services.full_backup_service import FULL_BACKUP_TABLES, export_full_database_backup
 from services.comment_service import add_comment, list_comments_for_lead, search_comments
+from services.contact_service import add_contact_to_lead
 from services.lead_board_service import (
     build_lead_board,
     filter_lead_board,
@@ -41,6 +42,7 @@ from services.lead_board_service import (
     team_board_summary,
 )
 from services.lead_service import unassigned_leads_count
+from services.lead_intelligence_service import recommend_for_lead
 from services.new_lead_service import create_lead_with_first_action
 from services.organization_data_service import (
     export_organization_csv_archive,
@@ -484,12 +486,100 @@ def _(self):
         normalize_postgres_url("sqlite:///local.db")
 
 
-@check("guided_flow_resolves_existing_business_values")
+@check("guided_flow_and_ontology_recommendations")
 def _(self):
     self.assertEqual(outcome_value("callback"), "À relancer")
     self.assertEqual(action_value("message"), "WhatsApp")
     self.assertIsNone(action_value("none"))
     self.assertEqual(touchpoint_value("unknown"), "Autre")
+
+    conn = self.fresh_conn()
+    ou = self.agent_org_user(conn, "Joël")
+    created = create_lead_with_first_action(
+        conn,
+        organization_id=self.org["id"],
+        actor_org_user_id=ou["id"],
+        lead_name=f"Ontology history {uuid.uuid4().hex}",
+        due_date="2026-01-01",
+    )
+    for index in range(6):
+        action = conn.execute(
+            "SELECT * FROM actions WHERE lead_id = ? AND status = 'pending' LIMIT 1",
+            (created["lead_id"],),
+        ).fetchone()
+        complete_action(
+            conn,
+            action_id=action["id"],
+            actor_org_user_id=ou["id"],
+            completion_status="Oui",
+            touchpoint_type="Appel",
+            outcome="Pas disponible",
+            note="Aucune réponse, contact injoignable.",
+            create_next=index < 5,
+            next_due_date="2026-01-01",
+            next_action_type="Appel",
+            next_title="Relancer",
+        )
+
+    # Freeze the synthetic history in the past so the chronophage and missed
+    # deadline policies are tested independently from the day the suite runs.
+    conn.execute(
+        "UPDATE leads SET created_at = ?, updated_at = ? WHERE id = ?",
+        ("2026-01-01T00:00:00+00:00", "2026-02-01T00:00:00+00:00", created["lead_id"]),
+    )
+    conn.execute(
+        "UPDATE actions SET created_at = ?, updated_at = ?, completed_at = ? WHERE lead_id = ?",
+        (
+            "2026-01-01T00:00:00+00:00",
+            "2026-02-01T00:00:00+00:00",
+            "2026-02-01T00:00:00+00:00",
+            created["lead_id"],
+        ),
+    )
+    conn.execute(
+        "UPDATE touchpoints SET occurred_at = ?, created_at = ? WHERE lead_id = ?",
+        ("2026-02-01T00:00:00+00:00", "2026-02-01T00:00:00+00:00", created["lead_id"]),
+    )
+    conn.execute(
+        "UPDATE comments SET created_at = ?, updated_at = ? WHERE lead_id = ?",
+        ("2026-02-01T00:00:00+00:00", "2026-02-01T00:00:00+00:00", created["lead_id"]),
+    )
+    conn.commit()
+
+    history_count = conn.execute(
+        "SELECT COUNT(*) AS count FROM touchpoints WHERE lead_id = ?",
+        (created["lead_id"],),
+    ).fetchone()["count"]
+    churn_advice = recommend_for_lead(
+        conn,
+        created["lead_id"],
+        current_outcome_key="unavailable",
+        reference_date=parse_date("2026-08-11"),
+    )
+    self.assertTrue(churn_advice.suggest_churn)
+    self.assertEqual(churn_advice.suggested_action, "none")
+    self.assertIn("NoResponseSignal", churn_advice.evidence.semantic_classes)
+
+    # A final "no next action" now explicitly marks the lead as stopped.
+    # Clear that flag to test the ontology's separate recent-interest rule.
+    conn.execute("UPDATE leads SET churn_flag = 0 WHERE id = ?", (created["lead_id"],))
+    conn.commit()
+
+    positive_advice = recommend_for_lead(
+        conn,
+        created["lead_id"],
+        current_outcome_key="interested",
+        reference_date=parse_date("2026-08-11"),
+    )
+    self.assertFalse(positive_advice.suggest_churn)
+    self.assertEqual(positive_advice.suggested_action, "meeting")
+    self.assertEqual(
+        conn.execute(
+            "SELECT COUNT(*) AS count FROM touchpoints WHERE lead_id = ?",
+            (created["lead_id"],),
+        ).fetchone()["count"],
+        history_count,
+    )
 
 
 @check("guided_flow_builds_due_dates_without_database_changes")
@@ -591,7 +681,7 @@ def _(self):
     self.assertEqual(primary_count, 1)
 
 
-@check("new_lead_preserves_contact_channels")
+@check("existing_lead_adds_contact_and_preserves_channels")
 def _(self):
     conn = self.fresh_conn()
     ou = self.agent_org_user(conn, "Joël")
@@ -600,22 +690,56 @@ def _(self):
         organization_id=self.org["id"],
         actor_org_user_id=ou["id"],
         lead_name=f"Channels {uuid.uuid4().hex}",
-        contacts=[
-            {
-                "full_name": "Awa Test",
-                "phone_raw": "+237 699 000 111",
-                "email": "awa@example.test",
-                "whatsapp": "+237699000111",
-            }
-        ],
+    )
+    added = add_contact_to_lead(
+        conn,
+        organization_id=self.org["id"],
+        lead_id=result["lead_id"],
+        actor_org_user_id=ou["id"],
+        full_name="Awa Test",
+        role_title="Responsable des opérations",
+        phone_raw="+237 699 000 111",
+        email="AWA@EXAMPLE.TEST",
+        whatsapp="+237699000111",
+        channel_notes="Préfère WhatsApp",
     )
     contact = conn.execute(
         "SELECT * FROM contacts WHERE id = ?",
-        (result["contact_ids"][0],),
+        (added["contact_id"],),
     ).fetchone()
+    self.assertTrue(added["is_primary"])
     self.assertEqual(contact["phone_normalized"], "237699000111")
     self.assertEqual(contact["email"], "awa@example.test")
     self.assertEqual(contact["whatsapp"], "+237699000111")
+    self.assertEqual(contact["role_title"], "Responsable des opérations")
+    second = add_contact_to_lead(
+        conn,
+        organization_id=self.org["id"],
+        lead_id=result["lead_id"],
+        actor_org_user_id=ou["id"],
+        full_name="Barman Test",
+        phone_raw="+237 677 000 222",
+    )
+    self.assertFalse(second["is_primary"])
+    primary_count = conn.execute(
+        "SELECT COUNT(*) AS count FROM contacts WHERE lead_id = ? AND is_primary = 1",
+        (result["lead_id"],),
+    ).fetchone()["count"]
+    self.assertEqual(primary_count, 1)
+    with self.assertRaisesRegex(ValueError, "lead_not_found"):
+        add_contact_to_lead(
+            conn,
+            organization_id=self.admin_org["id"],
+            lead_id=result["lead_id"],
+            actor_org_user_id=ou["id"],
+            full_name="Contact interdit",
+        )
+    audit = conn.execute(
+        "SELECT * FROM audit_logs WHERE entity_id = ? AND action = 'add_contact_to_lead'",
+        (added["contact_id"],),
+    ).fetchone()
+    self.assertIsNotNone(audit)
+    self.assertNotIn("awa@example.test", str(audit["after_json"] or ""))
 
 
 @check("google_calendar_url_is_prefilled")
@@ -937,7 +1061,7 @@ def _(self):
 I18N_KEYS = [
     "login.company_pin",
     "nav.new_lead",
-    "guided.outcome_question",
+    "intelligence.suggestion",
 ]
 
 for language in ("fr", "en"):

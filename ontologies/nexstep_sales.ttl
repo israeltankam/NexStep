@@ -1,0 +1,155 @@
+@prefix nex: <https://scale-ag.tech/nexstep/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+nex:NexStepSalesOntology a owl:Ontology ;
+    rdfs:label "NexStep sales follow-up ontology"@en ;
+    rdfs:comment "Semantic signals and conservative decision policies used by NexStep."@en .
+
+# The class hierarchy gives business meaning to otherwise heterogeneous notes,
+# outcomes and action records. OWL-RL inference expands subclasses before the
+# Python policy evaluator counts positive and negative evidence.
+nex:LeadSignal a owl:Class .
+nex:PositiveSignal a owl:Class ; rdfs:subClassOf nex:LeadSignal .
+nex:NegativeSignal a owl:Class ; rdfs:subClassOf nex:LeadSignal .
+nex:EngagementSignal a owl:Class ; rdfs:subClassOf nex:LeadSignal .
+
+nex:InterestedSignal a owl:Class ;
+    rdfs:subClassOf nex:PositiveSignal ;
+    nex:outcomeKey "interested" ;
+    nex:lexicalPattern "interesse", "interested", "interet", "interested in" .
+
+nex:CommitmentSignal a owl:Class ;
+    rdfs:subClassOf nex:PositiveSignal ;
+    nex:lexicalPattern "accord", "commande", "devis accepte", "signe", "signed", "agreed", "order confirmed", "proposal accepted" .
+
+nex:MeetingSignal a owl:Class ;
+    rdfs:subClassOf nex:PositiveSignal ;
+    nex:lexicalPattern "rendez vous", "rdv confirme", "meeting confirmed", "appointment confirmed" .
+
+nex:CallbackSignal a owl:Class ;
+    rdfs:subClassOf nex:EngagementSignal ;
+    nex:outcomeKey "callback" ;
+    nex:lexicalPattern "a rappeler", "rappeler", "call back", "callback" .
+
+nex:NoResponseSignal a owl:Class ;
+    rdfs:subClassOf nex:NegativeSignal ;
+    nex:outcomeKey "unavailable" ;
+    nex:lexicalPattern "pas de reponse", "aucune reponse", "sans reponse", "ne repond pas", "injoignable", "pas disponible", "no answer", "no response", "unreachable", "unavailable" .
+
+nex:RefusalSignal a owl:Class ;
+    rdfs:subClassOf nex:NegativeSignal ;
+    nex:outcomeKey "refusal" ;
+    nex:lexicalPattern "refus*", "pas interesse", "non interesse", "ne veut pas", "not interested", "declined", "does not want" .
+
+nex:CommercialObstacleSignal a owl:Class ;
+    rdfs:subClassOf nex:NegativeSignal ;
+    nex:lexicalPattern "pas de budget", "aucun budget", "trop cher", "sans suite", "annul*", "abandon*", "perdu", "no budget", "too expensive", "cancel*", "lost" .
+
+nex:DecisionPolicy a owl:Class .
+nex:ChurnPolicy a owl:Class ; rdfs:subClassOf nex:DecisionPolicy .
+nex:ActionPolicy a owl:Class ; rdfs:subClassOf nex:DecisionPolicy .
+nex:RecommendedAction a owl:Class .
+
+nex:CallAction a nex:RecommendedAction ;
+    nex:actionKey "call" ;
+    nex:channelPattern "appel", "call", "phone" .
+
+nex:MessageAction a nex:RecommendedAction ;
+    nex:actionKey "message" ;
+    nex:channelPattern "whatsapp", "message", "sms", "email", "mail" .
+
+nex:MeetingAction a nex:RecommendedAction ;
+    nex:actionKey "meeting" ;
+    nex:channelPattern "rendez vous", "rdv", "meeting", "visite", "presentation", "degustation" .
+
+nex:NoFollowupAction a nex:RecommendedAction ;
+    nex:actionKey "none" .
+
+# Churn is never inferred from a single weak signal. Each policy requires a
+# history of effort, and every policy is blocked by a recent positive signal.
+nex:RepeatedRefusalPolicy a nex:ChurnPolicy ;
+    nex:priority 300 ;
+    nex:minimumCompletedActions 2 ;
+    nex:minimumRefusalSignals 2 ;
+    nex:blockWhenRecentPositive true ;
+    nex:recommendedAction nex:NoFollowupAction ;
+    nex:reasonCode "repeated_refusal" ;
+    nex:confidence "high" .
+
+nex:RepeatedNegativePolicy a nex:ChurnPolicy ;
+    nex:priority 200 ;
+    nex:minimumCompletedActions 4 ;
+    nex:minimumNegativeSignals 4 ;
+    nex:minimumMissedDeadlines 2 ;
+    nex:minimumStalledDays 14 ;
+    nex:blockWhenRecentPositive true ;
+    nex:recommendedAction nex:NoFollowupAction ;
+    nex:reasonCode "repeated_negative" ;
+    nex:confidence "high" .
+
+nex:ChronophagePolicy a nex:ChurnPolicy ;
+    nex:priority 100 ;
+    nex:minimumCompletedActions 6 ;
+    nex:minimumNoResponseSignals 3 ;
+    nex:minimumMissedDeadlines 3 ;
+    nex:minimumStalledDays 30 ;
+    nex:blockWhenRecentPositive true ;
+    nex:recommendedAction nex:NoFollowupAction ;
+    nex:reasonCode "chronophage" ;
+    nex:confidence "high" .
+
+# Follow-up recommendations deliberately map to the four choices already
+# present in NexStep. Priorities make the current result more important than a
+# generic channel rotation.
+nex:InterestedMeetingPolicy a nex:ActionPolicy ;
+    nex:priority 300 ;
+    nex:triggerOutcomeKey "interested" ;
+    nex:recommendedAction nex:MeetingAction ;
+    nex:reasonCode "recent_interest" ;
+    nex:confidence "high" .
+
+nex:CallbackCallPolicy a nex:ActionPolicy ;
+    nex:priority 290 ;
+    nex:triggerOutcomeKey "callback" ;
+    nex:recommendedAction nex:CallAction ;
+    nex:reasonCode "callback_requested" ;
+    nex:confidence "high" .
+
+nex:RefusalStopPolicy a nex:ActionPolicy ;
+    nex:priority 280 ;
+    nex:triggerOutcomeKey "refusal" ;
+    nex:recommendedAction nex:NoFollowupAction ;
+    nex:reasonCode "latest_refusal" ;
+    nex:confidence "medium" .
+
+nex:RepeatedUnavailableMessagePolicy a nex:ActionPolicy ;
+    nex:priority 270 ;
+    nex:triggerOutcomeKey "unavailable" ;
+    nex:minimumNoResponseSignals 2 ;
+    nex:recommendedAction nex:MessageAction ;
+    nex:reasonCode "repeated_no_response" ;
+    nex:confidence "high" .
+
+nex:AfterCallMessagePolicy a nex:ActionPolicy ;
+    nex:priority 100 ;
+    nex:lastChannelKey "call" ;
+    nex:recommendedAction nex:MessageAction ;
+    nex:reasonCode "alternate_after_call" ;
+    nex:confidence "medium" .
+
+nex:AfterMessageCallPolicy a nex:ActionPolicy ;
+    nex:priority 90 ;
+    nex:lastChannelKey "message" ;
+    nex:recommendedAction nex:CallAction ;
+    nex:reasonCode "alternate_after_message" ;
+    nex:confidence "medium" .
+
+nex:DefaultCallPolicy a nex:ActionPolicy ;
+    nex:priority 0 ;
+    nex:recommendedAction nex:CallAction ;
+    nex:reasonCode "default_followup" ;
+    nex:confidence "low" .
+

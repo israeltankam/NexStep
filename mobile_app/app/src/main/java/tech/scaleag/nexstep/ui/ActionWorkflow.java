@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.provider.CalendarContract;
+import android.text.InputType;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -54,6 +55,59 @@ public final class ActionWorkflow {
     }
 
     private void chooseNextAction(JSONObject action, String outcomeKey, Runnable onSaved) {
+        String leadId = action.optString("leadId");
+        if (leadId.isBlank()) {
+            showNextActionChoices(action, outcomeKey, null, onSaved);
+            return;
+        }
+
+        LinearLayout loading = UiKit.vertical(context);
+        loading.addView(UiKit.progress(context));
+        loading.addView(UiKit.caption(
+            context,
+            context.getString(R.string.intelligence_analyzing)
+        ));
+        AlertDialog loadingDialog = new AlertDialog.Builder(context)
+            .setView(loading)
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+        try {
+            JSONObject payload = new JSONObject()
+                .put("leadId", leadId)
+                .put("currentOutcomeKey", outcomeKey);
+            api.call("lead_recommendation", payload, session.accessToken(), new ApiCallback() {
+                @Override
+                public void onSuccess(JSONObject data) {
+                    loadingDialog.dismiss();
+                    showNextActionChoices(
+                        action,
+                        outcomeKey,
+                        data.optJSONObject("recommendation"),
+                        onSaved
+                    );
+                }
+
+                @Override
+                public void onError(String errorCode) {
+                    // Recommendations are optional: an old or temporarily
+                    // unavailable backend must not block action completion.
+                    loadingDialog.dismiss();
+                    showNextActionChoices(action, outcomeKey, null, onSaved);
+                }
+            });
+        } catch (JSONException exception) {
+            loadingDialog.dismiss();
+            showNextActionChoices(action, outcomeKey, null, onSaved);
+        }
+    }
+
+    private void showNextActionChoices(
+        JSONObject action,
+        String outcomeKey,
+        JSONObject recommendation,
+        Runnable onSaved
+    ) {
         String[] labels = {
             context.getString(R.string.action_call),
             context.getString(R.string.action_message),
@@ -61,7 +115,11 @@ public final class ActionWorkflow {
             context.getString(R.string.action_none)
         };
         String[] keys = {"call", "message", "meeting", "none"};
-        choose(context.getString(R.string.next_question), labels, selected -> {
+        choose(
+            context.getString(R.string.next_question),
+            labels,
+            recommendationText(recommendation),
+            selected -> {
             String nextActionKey = keys[selected];
             if ("none".equals(nextActionKey)) {
                 confirm(action, outcomeKey, nextActionKey, null, onSaved);
@@ -69,6 +127,57 @@ public final class ActionWorkflow {
                 chooseDueDate(action, outcomeKey, nextActionKey, onSaved);
             }
         });
+    }
+
+    private String recommendationText(JSONObject recommendation) {
+        if (recommendation == null) return "";
+        JSONObject evidence = recommendation.optJSONObject("evidence");
+        if (evidence == null) evidence = new JSONObject();
+        String reason = switch (recommendation.optString("reasonCode")) {
+            case "already_churn" -> context.getString(
+                R.string.intelligence_reason_already_churn
+            );
+            case "repeated_refusal" -> context.getString(
+                R.string.intelligence_reason_repeated_refusal,
+                evidence.optInt("refusalSignals")
+            );
+            case "repeated_negative" -> context.getString(
+                R.string.intelligence_reason_repeated_negative,
+                evidence.optInt("negativeSignals"),
+                evidence.optInt("missedDeadlines")
+            );
+            case "chronophage" -> context.getString(
+                R.string.intelligence_reason_chronophage,
+                evidence.optInt("completedActions"),
+                evidence.optInt("noResponseSignals"),
+                evidence.optInt("missedDeadlines")
+            );
+            case "recent_interest" -> context.getString(
+                R.string.intelligence_reason_recent_interest
+            );
+            case "callback_requested" -> context.getString(
+                R.string.intelligence_reason_callback_requested
+            );
+            case "latest_refusal" -> context.getString(
+                R.string.intelligence_reason_latest_refusal
+            );
+            case "repeated_no_response" -> context.getString(
+                R.string.intelligence_reason_repeated_no_response,
+                evidence.optInt("noResponseSignals")
+            );
+            case "alternate_after_call" -> context.getString(
+                R.string.intelligence_reason_alternate_after_call
+            );
+            case "alternate_after_message" -> context.getString(
+                R.string.intelligence_reason_alternate_after_message
+            );
+            default -> context.getString(R.string.intelligence_reason_default_followup);
+        };
+        String action = localizedAction(recommendation.optString("suggestedAction", "call"));
+        int message = recommendation.optBoolean("suggestChurn")
+            ? R.string.intelligence_churn_suggestion
+            : R.string.intelligence_suggestion;
+        return context.getString(message, action, reason);
     }
 
     private void chooseDueDate(
@@ -133,18 +242,33 @@ public final class ActionWorkflow {
             )
         ));
         EditText note = UiKit.multiline(context, context.getString(R.string.optional_note));
-        EditText contact = UiKit.input(context, context.getString(R.string.contact_name), false);
-        contact.setText(action.optString("contactName"));
+        // Optional details start collapsed so routine completion stays short.
+        EditText contact = UiKit.input(context, context.getString(R.string.new_contact_met), false);
+        EditText contactRole = UiKit.input(context, context.getString(R.string.contact_role), false);
+        EditText contactPhone = UiKit.input(context, context.getString(R.string.phone), false);
+        EditText contactEmail = UiKit.input(context, context.getString(R.string.email), false);
+        EditText contactWhatsapp = UiKit.input(context, "WhatsApp", false);
         EditText obstacle = UiKit.input(context, context.getString(R.string.obstacle), false);
         EditText decision = UiKit.input(context, context.getString(R.string.decision), false);
         EditText nextComment = UiKit.multiline(context, context.getString(R.string.next_action_note));
         EditText targetPin = UiKit.input(context, context.getString(R.string.other_agent_pin), true);
-        form.addView(note);
-        form.addView(contact);
-        form.addView(obstacle);
-        form.addView(decision);
-        form.addView(nextComment);
-        form.addView(targetPin);
+        LinearLayout options = UiKit.vertical(context);
+        options.addView(note);
+        options.addView(contact);
+        options.addView(contactRole);
+        options.addView(contactPhone);
+        options.addView(contactEmail);
+        options.addView(contactWhatsapp);
+        options.addView(obstacle);
+        options.addView(decision);
+        options.addView(nextComment);
+        options.addView(targetPin);
+        options.setVisibility(View.GONE);
+        android.widget.Button reveal = UiKit.commandButton(context, context.getString(R.string.more_options));
+        reveal.setOnClickListener(view -> options.setVisibility(
+            options.getVisibility() == View.GONE ? View.VISIBLE : View.GONE));
+        form.addView(reveal);
+        form.addView(options);
 
         new AlertDialog.Builder(context)
             .setTitle(R.string.confirm_action)
@@ -160,6 +284,10 @@ public final class ActionWorkflow {
                         .put("nextTitle", localizedAction(nextActionKey))
                         .put("note", note.getText().toString())
                         .put("contactName", contact.getText().toString())
+                        .put("contactRole", contactRole.getText().toString())
+                        .put("contactPhone", contactPhone.getText().toString())
+                        .put("contactEmail", contactEmail.getText().toString())
+                        .put("contactWhatsapp", contactWhatsapp.getText().toString())
                         .put("obstacle", obstacle.getText().toString())
                         .put("decision", decision.getText().toString())
                         .put("nextComment", nextComment.getText().toString())
@@ -196,6 +324,78 @@ public final class ActionWorkflow {
                 }
             })
             .show();
+    }
+
+    /** Add a newly discovered contact without leaving the current action. */
+    public void addContact(JSONObject action, Runnable onSaved) {
+        LinearLayout form = UiKit.vertical(context);
+        EditText name = UiKit.input(context, context.getString(R.string.contact_name), false);
+        EditText role = UiKit.input(context, context.getString(R.string.contact_role), false);
+        EditText phone = UiKit.input(context, context.getString(R.string.phone), false);
+        EditText email = UiKit.input(context, context.getString(R.string.email), false);
+        EditText whatsapp = UiKit.input(context, "WhatsApp", false);
+        EditText notes = UiKit.multiline(context, context.getString(R.string.contact_notes));
+        phone.setInputType(InputType.TYPE_CLASS_PHONE);
+        whatsapp.setInputType(InputType.TYPE_CLASS_PHONE);
+        email.setInputType(
+            InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        );
+        form.addView(name);
+        form.addView(role);
+        form.addView(phone);
+        form.addView(email);
+        form.addView(whatsapp);
+        form.addView(notes);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+            .setTitle(R.string.add_contact)
+            .setView(UiKit.scroll(context, form))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.save, null)
+            .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            .setOnClickListener(view -> {
+                String fullName = name.getText().toString().trim();
+                String phoneValue = phone.getText().toString().trim();
+                String emailValue = email.getText().toString().trim();
+                String whatsappValue = whatsapp.getText().toString().trim();
+                if (
+                    fullName.isBlank() && phoneValue.isBlank() &&
+                    emailValue.isBlank() && whatsappValue.isBlank()
+                ) {
+                    Toast.makeText(context, R.string.contact_required, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                try {
+                    JSONObject payload = new JSONObject()
+                        .put("leadId", action.getString("leadId"))
+                        .put("actionId", action.getString("id"))
+                        .put("fullName", fullName)
+                        .put("roleTitle", role.getText().toString())
+                        .put("phone", phoneValue)
+                        .put("email", emailValue)
+                        .put("whatsapp", whatsappValue)
+                        .put("notes", notes.getText().toString());
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                    api.call("add_contact", payload, session.accessToken(), new ApiCallback() {
+                        @Override
+                        public void onSuccess(JSONObject data) {
+                            dialog.dismiss();
+                            Toast.makeText(context, R.string.contact_saved, Toast.LENGTH_LONG).show();
+                            onSaved.run();
+                        }
+
+                        @Override
+                        public void onError(String errorCode) {
+                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                            showError(errorCode);
+                        }
+                    });
+                } catch (JSONException exception) {
+                    showError("invalid_response");
+                }
+            }));
+        dialog.show();
     }
 
     public void transfer(JSONObject action, Runnable onSaved) {
@@ -284,8 +484,18 @@ public final class ActionWorkflow {
     }
 
     private void choose(String title, String[] labels, ChoiceListener listener) {
-        new AlertDialog.Builder(context)
-            .setTitle(title)
+        choose(title, labels, "", listener);
+    }
+
+    private void choose(
+        String title,
+        String[] labels,
+        String message,
+        ChoiceListener listener
+    ) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context).setTitle(title);
+        if (message != null && !message.isBlank()) builder.setMessage(message);
+        builder
             .setItems(labels, (dialog, which) -> listener.onChoice(which))
             .setNegativeButton(android.R.string.cancel, null)
             .show();

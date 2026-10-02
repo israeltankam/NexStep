@@ -70,8 +70,8 @@ android {
         applicationId = "tech.scaleag.nexstep"
         minSdk = 29
         targetSdk = targetSdkVersion
-        versionCode = 4
-        versionName = "1.0.3"
+        versionCode = 7
+        versionName = "1.0.6"
 
         val escapedUrl = supabaseProjectUrl
             .replace("\\", "\\\\")

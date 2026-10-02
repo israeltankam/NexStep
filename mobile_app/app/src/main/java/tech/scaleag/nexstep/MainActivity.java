@@ -331,6 +331,10 @@ public final class MainActivity extends Activity {
             case "password_change_required" -> getString(R.string.password_change_required);
             case "target_agent_not_found" -> getString(R.string.target_agent_not_found);
             case "comment_empty" -> getString(R.string.comment_empty);
+            case "contact_required" -> getString(R.string.contact_required);
+            case "touchpoint_required" -> getString(R.string.touchpoint_required);
+            case "invalid_email" -> getString(R.string.contact_invalid_email);
+            case "field_too_long" -> getString(R.string.contact_field_too_long);
             case "forbidden" -> getString(R.string.forbidden);
             default -> getString(R.string.generic_error);
         };

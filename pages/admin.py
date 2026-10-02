@@ -374,6 +374,27 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
 
     with tab_links:
         st.dataframe([dict(row) for row in admin_service.list_org_links(conn)], use_container_width=True, hide_index=True)
+        if is_global_admin:
+            # The list is grouped by company and contains only active agents;
+            # the service repeats the global-admin check before writing.
+            eligible = [row for row in admin_service.list_org_links(conn)
+                        if row["is_active"] and row["role"] in {"agent", "company_admin"}]
+            if eligible:
+                by_id = {str(row["id"]): row for row in eligible}
+                with st.form("company_admin_assignment"):
+                    st.subheader(t("admin.assign_company_admin", language))
+                    selected_id = st.selectbox(t("admin.select_company_agent", language), list(by_id),
+                        format_func=lambda value: f"{by_id[value]['organization_name']} · {by_id[value]['display_name']}")
+                    make_admin = st.checkbox(t("admin.company_admin_role", language),
+                        value=by_id[selected_id]["role"] == "company_admin", key=f"admin_role_{selected_id}")
+                    assign = st.form_submit_button(t("admin.save_company_admin", language))
+                if assign:
+                    with st.spinner(t("spinner.admin", language)):
+                        admin_service.set_company_administrator(conn,
+                            actor_user_id=str(session["user_id"]), org_user_id=selected_id,
+                            enabled=make_admin)
+                    st.success(t("admin.company_admin_saved", language))
+                    st.rerun()
         org_options = _as_options(admin_service.list_organizations(conn))
         user_options = _as_options(admin_service.list_users(conn), label_key="display_name")
         with st.form("link_user"):

@@ -33,6 +33,22 @@ DYNAMIC_KEYS = {
     *(f"login.{mode}_hello" for mode in ("login", "setup", "change")),
     *(f"guided.outcome.{value}" for value in ("interested", "callback", "unavailable", "refusal")),
     *(f"guided.action.{value}" for value in ("call", "message", "visit", "meeting", "none")),
+    *(
+        f"intelligence.reason.{value}"
+        for value in (
+            "already_churn",
+            "repeated_refusal",
+            "repeated_negative",
+            "chronophage",
+            "recent_interest",
+            "callback_requested",
+            "latest_refusal",
+            "repeated_no_response",
+            "alternate_after_call",
+            "alternate_after_message",
+            "default_followup",
+        )
+    ),
     *(f"delay.{value}" for value in ("today", "tomorrow", "3", "7", "14", "30", "custom", "none")),
     *(f"urgency.{value}" for value in ("red", "yellow", "green", "blue", "gray")),
     *(

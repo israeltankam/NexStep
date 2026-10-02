@@ -137,12 +137,14 @@ public final class MainShellView extends LinearLayout {
         );
         navigation.setBackgroundColor(UiKit.SURFACE_ALT);
         navigation.addView(navButton("🚀", R.string.nav_now, view -> showNextAction()));
-        navigation.addView(navButton("➕", R.string.nav_add, view -> showNewLead()));
-        navigation.addView(navButton("📊", R.string.nav_board, view -> showLeadBoard()));
-        navigation.addView(navButton("✅", R.string.nav_actions, view -> showActions()));
+        // Administration is intentionally second on small screens. As the
+        // fifth horizontal item it could remain completely outside the viewport.
         if (session.isAdministrator()) {
             navigation.addView(navButton("⚙", R.string.nav_admin, view -> showAdmin()));
         }
+        navigation.addView(navButton("➕", R.string.nav_add, view -> showNewLead()));
+        navigation.addView(navButton("📊", R.string.nav_board, view -> showLeadBoard()));
+        navigation.addView(navButton("✅", R.string.nav_actions, view -> showActions()));
         scroll.addView(navigation);
         return scroll;
     }

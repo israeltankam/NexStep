@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import re
 
 from database.connection import transaction
 from database.repository import fetch_all, fetch_one, insert, update_by_id
@@ -127,6 +128,11 @@ def complete_action(
     outcome: str,
     note: str,
     contact_name: str = "",
+    new_contact_name: str = "",
+    new_contact_role: str = "",
+    new_contact_phone: str = "",
+    new_contact_email: str = "",
+    new_contact_whatsapp: str = "",
     obstacle: str = "",
     decision: str = "",
     create_next: bool = False,
@@ -143,10 +149,37 @@ def complete_action(
         raise ValueError("Action not found.")
     if action["status"] != "pending":
         raise ValueError("Only pending actions can be completed.")
+    adding_contact = any(value.strip() for value in
+                         (new_contact_name, new_contact_role, new_contact_phone,
+                          new_contact_email, new_contact_whatsapp))
+    if adding_contact and (not new_contact_name.strip() or not new_contact_role.strip() or
+                           not any(value.strip() for value in
+                                   (new_contact_phone, new_contact_email, new_contact_whatsapp))):
+        raise ValueError("contact_required")
+    if (len(new_contact_name) > 200 or len(new_contact_role) > 200 or
+        len(new_contact_phone) > 80 or len(new_contact_email) > 254 or
+        len(new_contact_whatsapp) > 80):
+        raise ValueError("field_too_long")
+    if new_contact_email.strip() and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", new_contact_email.strip()):
+        raise ValueError("invalid_email")
 
     with transaction(conn):
         now = utcnow_iso()
         touchpoint_id = new_id()
+        contact_id = None
+        # The optional new person belongs to this completed encounter. Insert
+        # first so the touchpoint points to that exact contact in one commit.
+        if adding_contact:
+            contact_id = new_id()
+            existing = fetch_one(conn, "SELECT id FROM contacts WHERE lead_id = ? LIMIT 1", (action["lead_id"],))
+            insert(conn, "contacts", {"id": contact_id, "lead_id": action["lead_id"],
+                "full_name": new_contact_name.strip(), "role_title": new_contact_role.strip() or None,
+                "phone_raw": new_contact_phone.strip() or None,
+                "phone_normalized": re.sub(r"\D+", "", new_contact_phone) or None,
+                "email": new_contact_email.strip().casefold() or None,
+                "whatsapp": new_contact_whatsapp.strip() or None,
+                "channel_notes": None, "is_primary": 0 if existing else 1,
+                "created_at": now, "updated_at": now})
         insert(
             conn,
             "touchpoints",
@@ -156,7 +189,7 @@ def complete_action(
                 "lead_id": action["lead_id"],
                 "action_id": action_id,
                 "org_user_id": actor_org_user_id,
-                "contact_id": None,
+                "contact_id": contact_id,
                 "occurred_at": now,
                 "touchpoint_type": touchpoint_type,
                 "channel": action["channel_notes"],
@@ -186,7 +219,7 @@ def complete_action(
         )
         if obstacle.strip():
             update_by_id(conn, "leads", action["lead_id"], {"obstacle": obstacle.strip(), "updated_at": now})
-        if contact_name.strip() and not action["contact_name"]:
+        if contact_name.strip() and not action["contact_name"] and not contact_id:
             insert(
                 conn,
                 "contacts",
@@ -219,6 +252,10 @@ def complete_action(
             )
 
         next_action_id = None
+        if not create_next and not fetch_one(conn,
+            "SELECT id FROM actions WHERE lead_id = ? AND status = 'pending' LIMIT 1",
+            (action["lead_id"],)):
+            update_by_id(conn, "leads", action["lead_id"], {"churn_flag": 1, "updated_at": now})
         if create_next:
             next_action_id = new_id()
             assigned_to = next_assigned_org_user_id or action["assigned_to_org_user_id"]
@@ -246,7 +283,7 @@ def complete_action(
                     "updated_at": now,
                 },
             )
-            update_by_id(conn, "leads", action["lead_id"], {"owner_org_user_id": assigned_to, "updated_at": now})
+            update_by_id(conn, "leads", action["lead_id"], {"owner_org_user_id": assigned_to, "churn_flag": 0, "updated_at": now})
             if next_comment and next_comment.strip():
                 add_comment(
                     conn,

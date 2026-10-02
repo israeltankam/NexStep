@@ -3,11 +3,13 @@ package tech.scaleag.nexstep.ui;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -40,10 +42,33 @@ public final class AdminView extends LinearLayout {
 
         LinearLayout content = UiKit.vertical(context);
         content.addView(UiKit.title(context, "⚙ " + context.getString(R.string.administration)));
-        content.addView(UiKit.heading(context, context.getString(R.string.password_reset_requests)));
+        LinearLayout requestHeader = new LinearLayout(context);
+        requestHeader.setGravity(Gravity.CENTER_VERTICAL);
+        TextView requestTitle = UiKit.heading(
+            context,
+            context.getString(R.string.password_reset_requests)
+        );
+        requestHeader.addView(requestTitle, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button refresh = UiKit.commandButton(context, "↻");
+        refresh.setContentDescription(context.getString(R.string.refresh_reset_requests));
+        refresh.setOnClickListener(view -> loadRequests());
+        requestHeader.addView(refresh, new LayoutParams(
+            UiKit.dp(context, 52),
+            UiKit.dp(context, 48)
+        ));
+        content.addView(requestHeader);
         requestList = new LinearLayout(context);
         requestList.setOrientation(VERTICAL);
         content.addView(requestList);
+
+        if (session.isGlobalAdmin()) {
+            content.addView(UiKit.heading(context,
+                context.getString(R.string.assign_company_admin)));
+            Button assignAdmin = UiKit.commandButton(context,
+                context.getString(R.string.choose_company_agent));
+            assignAdmin.setOnClickListener(view -> chooseCompanyAdmin());
+            content.addView(assignAdmin);
+        }
 
         content.addView(UiKit.heading(context, context.getString(R.string.backups)));
         Button companyBackup = UiKit.primaryButton(
@@ -66,6 +91,60 @@ public final class AdminView extends LinearLayout {
         }
         addView(UiKit.scroll(context, content));
         loadRequests();
+    }
+
+    /** List agents from every company; the server checks global rights again. */
+    private void chooseCompanyAdmin() {
+        Toast.makeText(context, R.string.loading, Toast.LENGTH_SHORT).show();
+        api.call("company_agents", new JSONObject(), session.accessToken(), new ApiCallback() {
+            @Override public void onSuccess(JSONObject data) {
+                JSONArray agents = data.optJSONArray("agents");
+                if (agents == null || agents.length() == 0) {
+                    Toast.makeText(context, R.string.no_company_agents, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String[] labels = new String[agents.length()];
+                for (int i = 0; i < agents.length(); i++) {
+                    JSONObject agent = agents.optJSONObject(i);
+                    labels[i] = agent == null ? "" : agent.optString("organizationName") + " · " +
+                        agent.optString("displayName") + " · " +
+                        context.getString("company_admin".equals(agent.optString("role"))
+                            ? R.string.company_admin_role : R.string.agent_role);
+                }
+                new AlertDialog.Builder(context).setTitle(R.string.assign_company_admin)
+                    .setItems(labels, (dialog, index) -> {
+                        JSONObject agent = agents.optJSONObject(index);
+                        if (agent != null) confirmCompanyAdmin(agent);
+                    }).setNegativeButton(android.R.string.cancel, null).show();
+            }
+            @Override public void onError(String code) {
+                Toast.makeText(context, R.string.generic_error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void confirmCompanyAdmin(JSONObject agent) {
+        boolean promote = !"company_admin".equals(agent.optString("role"));
+        new AlertDialog.Builder(context)
+            .setTitle(promote ? R.string.promote_company_admin : R.string.remove_company_admin)
+            .setMessage(agent.optString("organizationName") + " · " + agent.optString("displayName"))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.save, (dialog, which) -> {
+                try {
+                    JSONObject payload = new JSONObject().put("orgUserId", agent.getString("orgUserId"))
+                        .put("enabled", promote);
+                    api.call("set_company_admin", payload, session.accessToken(), new ApiCallback() {
+                        @Override public void onSuccess(JSONObject data) {
+                            Toast.makeText(context, R.string.company_admin_saved, Toast.LENGTH_LONG).show();
+                        }
+                        @Override public void onError(String code) {
+                            Toast.makeText(context, R.string.generic_error, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                } catch (JSONException exception) {
+                    Toast.makeText(context, R.string.generic_error, Toast.LENGTH_LONG).show();
+                }
+            }).show();
     }
 
     private void loadRequests() {
@@ -98,8 +177,14 @@ public final class AdminView extends LinearLayout {
                     requestList.removeAllViews();
                     requestList.addView(UiKit.caption(
                         context,
-                        context.getString(R.string.generic_error)
+                        context.getString(R.string.reset_requests_load_error)
                     ));
+                    Button retry = UiKit.commandButton(
+                        context,
+                        "↻  " + context.getString(R.string.retry)
+                    );
+                    retry.setOnClickListener(view -> loadRequests());
+                    requestList.addView(retry);
                 }
             }
         );

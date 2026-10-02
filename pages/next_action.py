@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 
 import streamlit as st
@@ -15,6 +16,8 @@ from components.guided import (
 )
 from services.action_service import complete_action, list_actions, resolve_org_user_by_pin, transfer_action
 from services.comment_service import add_comment, list_comments_for_lead
+from services.contact_service import add_contact_to_lead
+from services.lead_intelligence_service import LeadRecommendation, recommend_for_lead
 from utils.dates import today
 from utils.guided_flow import action_value, due_date_from_choice, outcome_value, touchpoint_value
 from utils.i18n import t
@@ -24,6 +27,7 @@ from utils.urgency import urgency_labels
 
 FLOW_KEY = "guided_action_flow"
 SKIPPED_KEY = "guided_skipped_actions"
+LOGGER = logging.getLogger(__name__)
 
 
 def _start_flow(action_id: str) -> None:
@@ -87,9 +91,62 @@ def _render_outcome_step(flow: dict[str, object], language: str) -> None:
     _render_back(flow, language)
 
 
-def _render_next_action_step(flow: dict[str, object], language: str) -> None:
+def _render_intelligence_suggestion(
+    conn: sqlite3.Connection,
+    action: dict[str, object],
+    flow: dict[str, object],
+    language: str,
+) -> None:
+    """Show one advisory sentence without adding a new decision or control."""
+
+    try:
+        recommendation: LeadRecommendation = recommend_for_lead(
+            conn,
+            str(action["lead_id"]),
+            current_outcome_key=str(flow.get("outcome") or "") or None,
+        )
+    except Exception:
+        # Intelligence must remain an optional aid. A malformed ontology or
+        # missing package is logged, while the proven action workflow continues.
+        LOGGER.exception("Lead intelligence recommendation unavailable.")
+        return
+
+    evidence = recommendation.evidence
+    reason = t(
+        f"intelligence.reason.{recommendation.reason_code}",
+        language,
+        actions=evidence.completed_actions,
+        missed=evidence.missed_deadlines,
+        negative=evidence.negative_signals,
+        no_response=evidence.no_response_signals,
+        refusals=evidence.refusal_signals,
+        stalled=evidence.stalled_days,
+    )
+    message_key = (
+        "intelligence.churn_suggestion"
+        if recommendation.suggest_churn
+        else "intelligence.suggestion"
+    )
+    st.caption(
+        "💡 "
+        + t(
+            message_key,
+            language,
+            action=t(f"guided.action.{recommendation.suggested_action}", language),
+            reason=reason,
+        )
+    )
+
+
+def _render_next_action_step(
+    conn: sqlite3.Connection,
+    action: dict[str, object],
+    flow: dict[str, object],
+    language: str,
+) -> None:
     render_progress(2, 4, language)
     st.subheader(t("guided.next_question", language))
+    _render_intelligence_suggestion(conn, action, flow, language)
     selected = render_choice_grid(
         [
             ("call", "☎", t("guided.action.call", language)),
@@ -183,11 +240,11 @@ def _render_confirmation(
     # agent to process CRM vocabulary during routine work.
     with st.expander(t("guided.optional_details", language), expanded=False):
         note = st.text_area(t("complete.note", language), key="guided_completion_note", height=90)
-        contact_name = st.text_input(
-            t("complete.contact", language),
-            value=str(action.get("contact_name") or ""),
-            key="guided_completion_contact",
-        )
+        new_contact_name = st.text_input(t("lead_manage.new_contact", language), key="guided_new_contact")
+        new_contact_role = st.text_input(t("new_lead.contact_role", language), key="guided_new_contact_role")
+        new_contact_phone = st.text_input(t("new_lead.phone", language), key="guided_new_contact_phone")
+        new_contact_email = st.text_input(t("new_lead.email", language), key="guided_new_contact_email")
+        new_contact_whatsapp = st.text_input("WhatsApp", key="guided_new_contact_whatsapp")
         obstacle = st.text_input(t("complete.obstacle", language), key="guided_completion_obstacle")
         decision = st.text_input(t("complete.decision", language), key="guided_completion_decision")
         next_comment = st.text_area(
@@ -210,6 +267,15 @@ def _render_confirmation(
         type="primary",
         use_container_width=True,
     ):
+        return
+
+    adding_contact = any(value.strip() for value in
+                         (new_contact_name, new_contact_role, new_contact_phone,
+                          new_contact_email, new_contact_whatsapp))
+    if adding_contact and (not new_contact_name.strip() or not new_contact_role.strip() or
+                           not any(value.strip() for value in
+                                   (new_contact_phone, new_contact_email, new_contact_whatsapp))):
+        st.warning(t("lead_manage.error.contact_required", language))
         return
 
     with st.spinner(t("spinner.complete", language)):
@@ -239,7 +305,11 @@ def _render_confirmation(
             touchpoint_type=touchpoint_value(str(action.get("action_type_name") or "")),
             outcome=outcome_value(outcome_key),
             note=note,
-            contact_name=contact_name,
+            new_contact_name=new_contact_name,
+            new_contact_role=new_contact_role,
+            new_contact_phone=new_contact_phone,
+            new_contact_email=new_contact_email,
+            new_contact_whatsapp=new_contact_whatsapp,
             obstacle=obstacle,
             decision=decision,
             create_next=create_next,
@@ -270,6 +340,44 @@ def _render_more_options(
             lead_name=str(action.get("lead_name") or ""),
             key_prefix=f"next_action_{action['id']}",
         )
+
+        st.markdown(f"**{t('contacts.add_title', language)}**")
+        with st.form(f"guided_add_contact_{action['id']}", clear_on_submit=True):
+            identity_col, role_col = st.columns(2)
+            contact_name = identity_col.text_input(t("new_lead.contact_name", language))
+            role_title = role_col.text_input(t("new_lead.contact_role", language))
+            phone_col, email_col, whatsapp_col = st.columns(3)
+            phone_raw = phone_col.text_input(t("new_lead.phone", language))
+            email = email_col.text_input(t("new_lead.email", language))
+            whatsapp = whatsapp_col.text_input("WhatsApp")
+            channel_notes = st.text_input(t("contacts.notes", language))
+            add_contact = st.form_submit_button(
+                "➕ " + t("contacts.add_submit", language),
+                use_container_width=True,
+            )
+        if add_contact:
+            try:
+                with st.spinner(t("contacts.add_saving", language)):
+                    add_contact_to_lead(
+                        conn,
+                        organization_id=str(action["organization_id"]),
+                        lead_id=str(action["lead_id"]),
+                        actor_org_user_id=str(session["org_user_id"]),
+                        full_name=contact_name,
+                        role_title=role_title,
+                        phone_raw=phone_raw,
+                        email=email,
+                        whatsapp=whatsapp,
+                        channel_notes=channel_notes,
+                    )
+            except ValueError as exc:
+                error_key = str(exc)
+                supported = {"contact_required", "invalid_email", "field_too_long"}
+                st.warning(t(f"contacts.error.{error_key if error_key in supported else 'generic'}", language))
+            else:
+                st.session_state["guided_flash"] = t("contacts.add_saved", language)
+                st.rerun()
+
         with st.form(f"quick_comment_{action['id']}"):
             body = st.text_area(t("comments.quick_add", language), height=80)
             if st.form_submit_button("💬 " + t("comments.save", language), use_container_width=True):
@@ -322,6 +430,7 @@ def _render_more_options(
             list_comments_for_lead(conn, str(action["lead_id"])),
             max_preview=2000,
             empty_label=t("comments.none", language),
+            language=language,
         )
 
 
@@ -371,7 +480,7 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
         if step == "outcome":
             _render_outcome_step(flow, language)
         elif step == "next_action":
-            _render_next_action_step(flow, language)
+            _render_next_action_step(conn, action, flow, language)
         elif step == "due":
             _render_due_step(flow, language)
         else:
