@@ -63,28 +63,3 @@ export async function reactivateLead(context: SessionContext, payload: JsonObjec
     p_comment_id: newId(), p_audit_id: newId(),
   })) };
 }
-
-export async function companyAgents(context: SessionContext): Promise<ApiResult> {
-  if (!context.user.is_global_admin) return { status: 403, error: "forbidden" };
-  const [links, users, organizations] = await Promise.all([
-    context.db.from("organization_users").select("id,organization_id,user_id,role,is_active")
-      .eq("is_active", 1).in("role", ["agent", "company_admin"]).limit(5000),
-    context.db.from("users").select("id,display_name,is_active").eq("is_active", 1).limit(5000),
-    context.db.from("organizations").select("id,name,display_name").limit(1000),
-  ]);
-  if (links.error || users.error || organizations.error) throw new Error("database_error");
-  const people = new Map((users.data ?? []).map((user) => [text(user.id), text(user.display_name)]));
-  const companies = new Map((organizations.data ?? []).map((org) =>
-    [text(org.id), text(org.display_name || org.name)]));
-  return { data: { agents: (links.data ?? []).filter((link) => people.has(text(link.user_id)))
-    .map((link) => ({ orgUserId: link.id, organizationName: companies.get(text(link.organization_id)) || "",
-      displayName: people.get(text(link.user_id)) || "", role: link.role })) } };
-}
-
-export async function setCompanyAdmin(context: SessionContext, payload: JsonObject): Promise<ApiResult> {
-  if (!context.user.is_global_admin) return { status: 403, error: "forbidden" };
-  return { data: requireData(await context.db.rpc("nexstep_mobile_set_company_admin", {
-    p_actor_user_id: context.user.id, p_target_org_user_id: text(payload.orgUserId),
-    p_enabled: payload.enabled === true, p_audit_id: newId(),
-  })) };
-}

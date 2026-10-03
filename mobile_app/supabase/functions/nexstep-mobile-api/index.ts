@@ -10,7 +10,8 @@ import {
   pendingPasswordResets,
 } from "./_shared/read.ts";
 import type { ApiResult, JsonObject } from "./_shared/types.ts";
-import { companyAgents, reactivateLead, setCompanyAdmin, updateLead } from "./_shared/lead_management.ts";
+import { reactivateLead, updateLead } from "./_shared/lead_management.ts";
+import { companyAgents, setCompanyAdmin, updateAgent } from "./_shared/agent_management.ts";
 import {
   addContact,
   addComment,
@@ -81,6 +82,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
           return response(await reactivateLead(context, payload));
         case "company_agents":
           return response(await companyAgents(context));
+        case "update_agent":
+          return response(await updateAgent(context, payload));
         case "set_company_admin":
           return response(await setCompanyAdmin(context, payload));
         case "lead_recommendation":

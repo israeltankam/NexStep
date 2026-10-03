@@ -63,10 +63,10 @@ public final class AdminView extends LinearLayout {
 
         if (session.isGlobalAdmin()) {
             content.addView(UiKit.heading(context,
-                context.getString(R.string.assign_company_admin)));
+                context.getString(R.string.edit_agent)));
             Button assignAdmin = UiKit.commandButton(context,
                 context.getString(R.string.choose_company_agent));
-            assignAdmin.setOnClickListener(view -> chooseCompanyAdmin());
+            assignAdmin.setOnClickListener(view -> chooseAgent());
             content.addView(assignAdmin);
         }
 
@@ -94,7 +94,7 @@ public final class AdminView extends LinearLayout {
     }
 
     /** List agents from every company; the server checks global rights again. */
-    private void chooseCompanyAdmin() {
+    private void chooseAgent() {
         Toast.makeText(context, R.string.loading, Toast.LENGTH_SHORT).show();
         api.call("company_agents", new JSONObject(), session.accessToken(), new ApiCallback() {
             @Override public void onSuccess(JSONObject data) {
@@ -109,42 +109,19 @@ public final class AdminView extends LinearLayout {
                     labels[i] = agent == null ? "" : agent.optString("organizationName") + " · " +
                         agent.optString("displayName") + " · " +
                         context.getString("company_admin".equals(agent.optString("role"))
-                            ? R.string.company_admin_role : R.string.agent_role);
+                            ? R.string.company_admin_role : "manager".equals(agent.optString("role"))
+                            ? R.string.manager_role : R.string.agent_role);
                 }
-                new AlertDialog.Builder(context).setTitle(R.string.assign_company_admin)
+                new AlertDialog.Builder(context).setTitle(R.string.edit_agent)
                     .setItems(labels, (dialog, index) -> {
                         JSONObject agent = agents.optJSONObject(index);
-                        if (agent != null) confirmCompanyAdmin(agent);
+                        if (agent != null) new AgentEditorDialog(context, api, session).show(agent);
                     }).setNegativeButton(android.R.string.cancel, null).show();
             }
             @Override public void onError(String code) {
                 Toast.makeText(context, R.string.generic_error, Toast.LENGTH_LONG).show();
             }
         });
-    }
-
-    private void confirmCompanyAdmin(JSONObject agent) {
-        boolean promote = !"company_admin".equals(agent.optString("role"));
-        new AlertDialog.Builder(context)
-            .setTitle(promote ? R.string.promote_company_admin : R.string.remove_company_admin)
-            .setMessage(agent.optString("organizationName") + " · " + agent.optString("displayName"))
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.save, (dialog, which) -> {
-                try {
-                    JSONObject payload = new JSONObject().put("orgUserId", agent.getString("orgUserId"))
-                        .put("enabled", promote);
-                    api.call("set_company_admin", payload, session.accessToken(), new ApiCallback() {
-                        @Override public void onSuccess(JSONObject data) {
-                            Toast.makeText(context, R.string.company_admin_saved, Toast.LENGTH_LONG).show();
-                        }
-                        @Override public void onError(String code) {
-                            Toast.makeText(context, R.string.generic_error, Toast.LENGTH_LONG).show();
-                        }
-                    });
-                } catch (JSONException exception) {
-                    Toast.makeText(context, R.string.generic_error, Toast.LENGTH_LONG).show();
-                }
-            }).show();
     }
 
     private void loadRequests() {

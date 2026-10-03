@@ -232,4 +232,21 @@
     <string name="company_admin_saved">Rôle enregistré.</string>
     <string name="touchpoint_required">Indiquez le nom, la fonction et au moins un moyen de contacter cette personne.</string>
     <string name="choose_company_agent">Choisir un agent</string>
+    <string name="edit_agent">Modifier un agent</string>
+    <string name="agent_scope_hint">Le rôle, l’accès à l’équipe et le PIN concernent cette entreprise. Le nom, les coordonnées, la langue et l’état du compte suivent la personne dans toutes ses entreprises.</string>
+    <string name="agent_name">Nom de l’agent</string>
+    <string name="agent_email">E-mail</string>
+    <string name="agent_phone">Téléphone</string>
+    <string name="agent_language">Langue</string>
+    <string name="language_french">Français</string>
+    <string name="language_english">Anglais</string>
+    <string name="agent_authority">Niveau d’autorité dans cette entreprise</string>
+    <string name="manager_role">responsable d’équipe</string>
+    <string name="agent_team_access">Peut voir l’équipe</string>
+    <string name="agent_company_active">Accès actif à cette entreprise</string>
+    <string name="agent_account_active">Compte NexStep actif</string>
+    <string name="agent_new_pin">Nouveau PIN agent (laisser vide pour conserver)</string>
+    <string name="agent_saved">Agent mis à jour.</string>
+    <string name="agent_invalid_details">Vérifiez le nom, les coordonnées et le PIN.</string>
+    <string name="agent_duplicate_pin">Ce PIN est déjà utilisé dans cette entreprise.</string>
 </resources>

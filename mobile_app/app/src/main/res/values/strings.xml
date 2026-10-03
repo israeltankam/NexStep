@@ -230,4 +230,21 @@
     <string name="company_admin_saved">Role saved.</string>
     <string name="touchpoint_required">Enter the name, role and at least one way to contact this person.</string>
     <string name="choose_company_agent">Choose an agent</string>
+    <string name="edit_agent">Edit an agent</string>
+    <string name="agent_scope_hint">Role, team access and PIN apply to this company. Name, contact details, language and account status apply across companies.</string>
+    <string name="agent_name">Agent name</string>
+    <string name="agent_email">Email</string>
+    <string name="agent_phone">Phone</string>
+    <string name="agent_language">Language</string>
+    <string name="language_french">French</string>
+    <string name="language_english">English</string>
+    <string name="agent_authority">Authority in this company</string>
+    <string name="manager_role">team manager</string>
+    <string name="agent_team_access">Can view the team</string>
+    <string name="agent_company_active">Access to this company active</string>
+    <string name="agent_account_active">NexStep account active</string>
+    <string name="agent_new_pin">New agent PIN (leave blank to keep it)</string>
+    <string name="agent_saved">Agent updated.</string>
+    <string name="agent_invalid_details">Check the name, contact details and PIN.</string>
+    <string name="agent_duplicate_pin">This PIN is already used in this company.</string>
 </resources>

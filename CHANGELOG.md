@@ -1,5 +1,13 @@
 # Journal de modifications NexStep
 
+## 2026-10-03
+
+- L’administrateur général scale.ag peut désormais modifier la fiche complète d’un agent depuis l’onglet « Utilisateurs » : identité, coordonnées, langue, état du compte, accès à l’entreprise et PIN facultatif.
+- Le niveau d’autorité est choisi pour chaque entreprise : agent, responsable d’équipe ou administrateur d’entreprise. Les modifications sont atomiques, contrôlées côté serveur et auditées sans enregistrer le PIN.
+- Même parcours dans l’administration Android, derrière le choix d’un agent ; ajout d’une fonction PostgreSQL privée dans la migration additive déjà prévue. Version mobile `1.0.7` (`versionCode 8`).
+- Mise à jour des libellés français/anglais et du guide utilisateur bilingue.
+- Contrôles validés : 120 tests Python, 15 tests Deno, audit des traductions, 883 contrôles mobiles, typage TypeScript, Android Lint et APK signé avec la clé Debug existante. Les bases de test temporaires ont été supprimées.
+
 ## 2026-10-02
 
 - Ajout de l’attribution et du retrait du rôle administrateur d’entreprise par l’administrateur général scale.ag, avec contrôle serveur et audit.

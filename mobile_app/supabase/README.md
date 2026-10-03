@@ -15,10 +15,9 @@ utilisée en production. Elle ne remplace aucune table et n’efface aucune donn
 
 ## 1. Exécuter la migration additive
 
-Pour la version mobile **1.0.6**, exécuter ensuite dans le même SQL Editor
-`supabase/database/20261002_lead_management.sql`. Cette migration ajoute des
-fonctions privées pour les nouveaux parcours, sans modifier ni effacer les
-tables existantes. **Exécuter le SQL avant de redéployer l’Edge Function et
+Pour la version mobile **1.0.7**, exécuter les scripts ci-dessous dans le SQL
+Editor. Si la migration native de juillet est déjà installée, commencer au
+second script. **Exécuter le SQL avant de redéployer l’Edge Function et
 d’installer la nouvelle APK.**
 
 1. Ouvrir le projet dans le Dashboard Supabase.
@@ -26,8 +25,12 @@ d’installer la nouvelle APK.**
 3. Ouvrir localement
    `mobile_app/supabase/database/20260730_native_mobile_transactions.sql`.
 4. Coller tout le contenu dans le SQL Editor et toucher **Run** une seule fois.
+5. Ouvrir une nouvelle requête, coller tout le contenu de
+   `mobile_app/supabase/database/20261002_lead_management.sql`, puis toucher
+   **Run**. Ce second script ajoute notamment la modification complète d’un
+   agent et de son rôle dans une entreprise.
 
-Le script est transactionnel et idempotent. Il crée ou met à jour les fonctions
+Les scripts sont transactionnels et idempotents. Ils créent ou mettent à jour les fonctions
 privées suivantes :
 
 - `nexstep_mobile_create_lead`;

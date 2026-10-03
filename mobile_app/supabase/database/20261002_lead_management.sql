@@ -318,6 +318,67 @@ BEGIN
 END;
 $$;
 
+-- The profile belongs to a person, whereas authority and PIN belong to one
+-- organization link. Update both rows together after checking the actor again.
+CREATE OR REPLACE FUNCTION public.nexstep_mobile_update_agent(
+    p_actor_user_id text, p_target_org_user_id text, p_display_name text,
+    p_email text, p_phone text, p_preferred_language text, p_role text,
+    p_can_view_team boolean, p_account_active boolean, p_link_active boolean,
+    p_agent_pin_lookup text, p_agent_pin_hash text, p_audit_id text
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE
+    v_target organization_users%ROWTYPE;
+    v_user users%ROWTYPE;
+    v_now text := to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"+00:00"');
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_actor_user_id AND is_global_admin = 1 AND is_active = 1) THEN
+        RAISE EXCEPTION 'forbidden';
+    END IF;
+    SELECT * INTO v_target FROM organization_users WHERE id = p_target_org_user_id FOR UPDATE;
+    IF v_target.id IS NULL OR v_target.role NOT IN ('agent', 'manager', 'company_admin') THEN
+        RAISE EXCEPTION 'invalid_agent';
+    END IF;
+    SELECT * INTO v_user FROM users WHERE id = v_target.user_id FOR UPDATE;
+    IF v_user.id IS NULL OR v_user.is_global_admin <> 0 THEN
+        RAISE EXCEPTION 'invalid_agent';
+    END IF;
+    IF p_display_name IS NULL OR length(btrim(p_display_name)) NOT BETWEEN 1 AND 200 OR
+       length(coalesce(p_email, '')) > 254 OR length(coalesce(p_phone, '')) > 80 OR
+       (p_email IS NOT NULL AND p_email <> '' AND p_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$') OR
+       p_preferred_language NOT IN ('fr', 'en') OR
+       p_role NOT IN ('agent', 'manager', 'company_admin') OR
+       p_can_view_team IS NULL OR p_account_active IS NULL OR p_link_active IS NULL OR
+       (p_agent_pin_lookup IS NULL) <> (p_agent_pin_hash IS NULL) THEN
+        RAISE EXCEPTION 'invalid_agent_details';
+    END IF;
+    IF p_agent_pin_lookup IS NOT NULL AND EXISTS (
+        SELECT 1 FROM organization_users WHERE organization_id = v_target.organization_id
+        AND agent_pin_lookup = p_agent_pin_lookup AND id <> p_target_org_user_id
+    ) THEN
+        RAISE EXCEPTION 'duplicate_pin';
+    END IF;
+    UPDATE users SET display_name = btrim(p_display_name),
+        email = nullif(lower(btrim(p_email)), ''), phone = nullif(btrim(p_phone), ''),
+        preferred_language = p_preferred_language,
+        is_active = CASE WHEN p_account_active THEN 1 ELSE 0 END, updated_at = v_now
+    WHERE id = v_target.user_id;
+    UPDATE organization_users SET role = p_role,
+        can_view_team = CASE WHEN p_role = 'company_admin' OR p_can_view_team THEN 1 ELSE 0 END,
+        is_active = CASE WHEN p_link_active THEN 1 ELSE 0 END,
+        agent_pin_lookup = coalesce(p_agent_pin_lookup, agent_pin_lookup),
+        agent_pin_hash = coalesce(p_agent_pin_hash, agent_pin_hash), updated_at = v_now
+    WHERE id = p_target_org_user_id;
+    INSERT INTO audit_logs (id, organization_id, actor_user_id, entity_type,
+        entity_id, action, after_json, created_at)
+    VALUES (p_audit_id, v_target.organization_id, p_actor_user_id, 'organization_user',
+        p_target_org_user_id, 'update_agent',
+        jsonb_build_object('role', p_role, 'account_active', p_account_active,
+            'link_active', p_link_active, 'pin_changed', p_agent_pin_lookup IS NOT NULL)::text, v_now);
+    RETURN jsonb_build_object('orgUserId', p_target_org_user_id, 'role', p_role);
+END;
+$$;
+
+-- Compatibility for phones still running 1.0.6 during the update window.
 CREATE OR REPLACE FUNCTION public.nexstep_mobile_set_company_admin(
     p_actor_user_id text, p_target_org_user_id text, p_enabled boolean, p_audit_id text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
@@ -331,7 +392,7 @@ BEGIN
     END IF;
     SELECT * INTO v_target FROM organization_users WHERE id = p_target_org_user_id FOR UPDATE;
     IF v_target.id IS NULL OR v_target.is_active <> 1 OR
-       v_target.role NOT IN ('agent', 'company_admin') THEN
+       v_target.role NOT IN ('agent', 'manager', 'company_admin') THEN
         RAISE EXCEPTION 'invalid_agent';
     END IF;
     v_role := CASE WHEN p_enabled THEN 'company_admin' ELSE 'agent' END;
@@ -353,7 +414,8 @@ BEGIN
         JOIN pg_namespace n ON n.oid = p.pronamespace
         WHERE n.nspname = 'public' AND p.proname IN
         ('nexstep_mobile_complete_action_v2', 'nexstep_mobile_update_lead',
-         'nexstep_mobile_reactivate_lead', 'nexstep_mobile_set_company_admin')
+         'nexstep_mobile_reactivate_lead', 'nexstep_mobile_update_agent',
+         'nexstep_mobile_set_company_admin')
     LOOP
         EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated', v_function);
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', v_function);

@@ -7,7 +7,9 @@ import sqlite3
 
 import streamlit as st
 
+from components.admin_agent_editor import render_agent_editor
 from services import admin_service
+from services.agent_management_service import AGENT_ROLES
 from services.full_backup_service import (
     export_full_database_backup,
     verify_global_backup_authorization,
@@ -22,8 +24,6 @@ from services.organization_data_service import (
 )
 from services.password_reset_service import list_pending_requests, review_password_reset
 from services.seed_service import seed_validation_counts
-from services.user_profile_service import update_user_contact_details_as_global_admin
-from utils.constants import ROLES
 from utils.i18n import t
 from utils.paths import get_database_path
 
@@ -329,72 +329,12 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                 st.success(t("admin.created", language))
                 st.rerun()
 
-        if is_global_admin and users:
+        if is_global_admin:
             st.divider()
-            st.subheader(t("admin.edit_user_contact", language))
-            users_by_id = {str(row["id"]): row for row in users}
-            selected_user_id = st.selectbox(
-                t("admin.select_user", language),
-                list(users_by_id),
-                format_func=lambda user_id: (
-                    f"{users_by_id[user_id]['display_name']} · "
-                    f"{users_by_id[user_id]['email'] or user_id[:8]}"
-                ),
-            )
-            selected_user = users_by_id[selected_user_id]
-            with st.form(f"edit_user_contact_{selected_user_id}"):
-                edited_email = st.text_input(
-                    t("help.contact_email", language),
-                    value=str(selected_user["email"] or ""),
-                )
-                edited_phone = st.text_input(
-                    t("help.contact_phone", language),
-                    value=str(selected_user["phone"] or ""),
-                )
-                if st.form_submit_button(
-                    t("admin.save_user_contact", language),
-                    use_container_width=True,
-                ):
-                    try:
-                        with st.spinner(t("spinner.admin", language)):
-                            update_user_contact_details_as_global_admin(
-                                conn,
-                                target_user_id=selected_user_id,
-                                email=edited_email,
-                                phone=edited_phone,
-                                actor_user_id=str(session["user_id"]),
-                            )
-                    except PermissionError:
-                        st.error(t("admin.forbidden", language))
-                    except ValueError as exc:
-                        st.error(t(f"help.contact_{exc}", language))
-                    else:
-                        st.success(t("admin.user_contact_saved", language))
-                        st.rerun()
+            render_agent_editor(conn, actor_user_id=str(session["user_id"]), language=language)
 
     with tab_links:
         st.dataframe([dict(row) for row in admin_service.list_org_links(conn)], use_container_width=True, hide_index=True)
-        if is_global_admin:
-            # The list is grouped by company and contains only active agents;
-            # the service repeats the global-admin check before writing.
-            eligible = [row for row in admin_service.list_org_links(conn)
-                        if row["is_active"] and row["role"] in {"agent", "company_admin"}]
-            if eligible:
-                by_id = {str(row["id"]): row for row in eligible}
-                with st.form("company_admin_assignment"):
-                    st.subheader(t("admin.assign_company_admin", language))
-                    selected_id = st.selectbox(t("admin.select_company_agent", language), list(by_id),
-                        format_func=lambda value: f"{by_id[value]['organization_name']} · {by_id[value]['display_name']}")
-                    make_admin = st.checkbox(t("admin.company_admin_role", language),
-                        value=by_id[selected_id]["role"] == "company_admin", key=f"admin_role_{selected_id}")
-                    assign = st.form_submit_button(t("admin.save_company_admin", language))
-                if assign:
-                    with st.spinner(t("spinner.admin", language)):
-                        admin_service.set_company_administrator(conn,
-                            actor_user_id=str(session["user_id"]), org_user_id=selected_id,
-                            enabled=make_admin)
-                    st.success(t("admin.company_admin_saved", language))
-                    st.rerun()
         org_options = _as_options(admin_service.list_organizations(conn))
         user_options = _as_options(admin_service.list_users(conn), label_key="display_name")
         with st.form("link_user"):
@@ -402,7 +342,8 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
             organization_name = st.selectbox(t("admin.organization", language), list(org_options))
             user_name = st.selectbox(t("admin.user", language), list(user_options))
             pin = st.text_input(t("admin.agent_pin", language), type="password")
-            role = st.selectbox(t("admin.role", language), ROLES, index=3)
+            role = st.selectbox(t("admin.role", language), AGENT_ROLES, index=0,
+                                format_func=lambda value: t(f"admin.agent_role_{value}", language))
             can_view_team = st.checkbox(t("admin.can_view_team", language), value=True)
             if st.form_submit_button(t("admin.link", language)):
                 with st.spinner(t("spinner.admin", language)):
@@ -417,16 +358,6 @@ def render(conn: sqlite3.Connection, session: dict[str, object]) -> None:
                     )
                 st.success(t("admin.created", language))
                 st.rerun()
-        links = admin_service.list_org_links(conn)
-        if links:
-            link_options = {f"{row['organization_name']} · {row['display_name']}": row["id"] for row in links}
-            selected_link = st.selectbox(t("admin.update_agent_pin", language), list(link_options), key="pin_agent")
-            new_pin = st.text_input(t("admin.new_pin", language), type="password", key="new_agent_pin")
-            if st.button(t("admin.update_pin", language), key="update_agent_pin_btn"):
-                with st.spinner(t("spinner.admin", language)):
-                    admin_service.update_agent_pin(conn, link_options[selected_link], new_pin, actor_user_id=str(session["user_id"]))
-                st.success(t("admin.pin_updated", language))
-
     with tab_import:
         uploaded = st.file_uploader(t("admin.upload", language), type=["csv", "xlsx"])
         if uploaded and st.button(t("admin.run_import", language)):
