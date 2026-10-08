@@ -15,7 +15,7 @@ utilisée en production. Elle ne remplace aucune table et n’efface aucune donn
 
 ## 1. Exécuter la migration additive
 
-Pour la version mobile **1.0.7**, exécuter les scripts ci-dessous dans le SQL
+Pour la version mobile **1.0.8**, exécuter les scripts ci-dessous dans le SQL
 Editor. Si la migration native de juillet est déjà installée, commencer au
 second script. **Exécuter le SQL avant de redéployer l’Edge Function et
 d’installer la nouvelle APK.**
@@ -29,18 +29,23 @@ d’installer la nouvelle APK.**
    `mobile_app/supabase/database/20261002_lead_management.sql`, puis toucher
    **Run**. Ce second script ajoute notamment la modification complète d’un
    agent et de son rôle dans une entreprise.
+6. Dans une troisième requête séparée, exécuter
+   `mobile_app/supabase/database/20261008_team_actions_index.sql` pour accélérer
+   les pages « Actions d’équipe ». Cette commande ne modifie aucune action.
 
-Les scripts sont transactionnels et idempotents. Ils créent ou mettent à jour les fonctions
-privées suivantes :
+Les deux scripts de fonctions sont transactionnels et idempotents. Ils créent
+ou mettent à jour notamment les fonctions privées suivantes :
 
 - `nexstep_mobile_create_lead`;
 - `nexstep_mobile_add_comment`;
 - `nexstep_mobile_complete_action`;
 - `nexstep_mobile_transfer_action`;
 - `nexstep_mobile_review_password_reset`.
+- `nexstep_mobile_update_agent`.
 
-Il révoque leur exécution pour `PUBLIC`, `anon` et `authenticated`, puis
-l’accorde uniquement à `service_role`. Il ne contient aucun `DROP TABLE`,
+Ils révoquent leur exécution pour `PUBLIC`, `anon` et `authenticated`, puis
+l’accordent uniquement à `service_role`. L’index de la troisième requête se
+construit séparément. Aucun de ces scripts ne contient `DROP TABLE`,
 `TRUNCATE` ou `DELETE`.
 
 ## 2. Installer le Supabase CLI

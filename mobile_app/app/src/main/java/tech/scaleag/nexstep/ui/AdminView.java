@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,6 +33,7 @@ public final class AdminView extends LinearLayout {
     private final NexStepApiClient api;
     private final AppSession session;
     private final LinearLayout requestList;
+    private final ProgressBar agentProgress;
 
     public AdminView(Context context, NexStepApiClient api, AppSession session) {
         super(context);
@@ -42,6 +44,17 @@ public final class AdminView extends LinearLayout {
 
         LinearLayout content = UiKit.vertical(context);
         content.addView(UiKit.title(context, "⚙ " + context.getString(R.string.administration)));
+        agentProgress = UiKit.progress(context);
+        agentProgress.setVisibility(View.GONE);
+        if (session.isGlobalAdmin()) {
+            // Keep this primary task above a potentially long reset inbox.
+            content.addView(UiKit.heading(context, context.getString(R.string.edit_agent)));
+            Button editAgent = UiKit.primaryButton(context,
+                context.getString(R.string.choose_company_agent));
+            editAgent.setOnClickListener(view -> chooseAgent());
+            content.addView(editAgent);
+            content.addView(agentProgress);
+        }
         LinearLayout requestHeader = new LinearLayout(context);
         requestHeader.setGravity(Gravity.CENTER_VERTICAL);
         TextView requestTitle = UiKit.heading(
@@ -60,15 +73,6 @@ public final class AdminView extends LinearLayout {
         requestList = new LinearLayout(context);
         requestList.setOrientation(VERTICAL);
         content.addView(requestList);
-
-        if (session.isGlobalAdmin()) {
-            content.addView(UiKit.heading(context,
-                context.getString(R.string.edit_agent)));
-            Button assignAdmin = UiKit.commandButton(context,
-                context.getString(R.string.choose_company_agent));
-            assignAdmin.setOnClickListener(view -> chooseAgent());
-            content.addView(assignAdmin);
-        }
 
         content.addView(UiKit.heading(context, context.getString(R.string.backups)));
         Button companyBackup = UiKit.primaryButton(
@@ -95,9 +99,11 @@ public final class AdminView extends LinearLayout {
 
     /** List agents from every company; the server checks global rights again. */
     private void chooseAgent() {
+        agentProgress.setVisibility(View.VISIBLE);
         Toast.makeText(context, R.string.loading, Toast.LENGTH_SHORT).show();
         api.call("company_agents", new JSONObject(), session.accessToken(), new ApiCallback() {
             @Override public void onSuccess(JSONObject data) {
+                agentProgress.setVisibility(View.GONE);
                 JSONArray agents = data.optJSONArray("agents");
                 if (agents == null || agents.length() == 0) {
                     Toast.makeText(context, R.string.no_company_agents, Toast.LENGTH_LONG).show();
@@ -119,7 +125,11 @@ public final class AdminView extends LinearLayout {
                     }).setNegativeButton(android.R.string.cancel, null).show();
             }
             @Override public void onError(String code) {
-                Toast.makeText(context, R.string.generic_error, Toast.LENGTH_LONG).show();
+                agentProgress.setVisibility(View.GONE);
+                int message = "unknown_operation".equals(code) ||
+                    "function_unavailable".equals(code)
+                    ? R.string.mobile_update_required : R.string.agent_list_load_error;
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show();
             }
         });
     }

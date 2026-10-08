@@ -9,7 +9,7 @@ import streamlit as st
 
 from components.sidebar import render_sidebar
 from database.connection import DatabaseConfigurationError, DatabaseConnectionError, get_connection
-from pages import admin, lead_board, my_actions, new_lead, next_action
+from pages import admin, lead_board, my_actions, new_lead, next_action, team_actions
 from services.auth_service import (
     build_session_payload,
     identify_by_pins,
@@ -237,6 +237,7 @@ def main() -> None:
             "next_action": next_action.render,
             "new_lead": new_lead.render,
             "my_actions": my_actions.render,
+            "team_actions": team_actions.render,
             "lead_board": lead_board.render,
             # Preserve old in-app destinations while consolidating both views.
             "lead_detail": lead_board.render,

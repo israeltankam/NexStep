@@ -1,7 +1,8 @@
 # NexStep Mobile
 
-La version **1.0.7** nécessite la migration additive
-`supabase/database/20261002_lead_management.sql` et le redéploiement de
+La version **1.0.8** nécessite la migration additive
+`supabase/database/20261002_lead_management.sql`, l’index
+`supabase/database/20261008_team_actions_index.sql` et le redéploiement de
 `nexstep-mobile-api` avant l’installation de l’APK. La base PostgreSQL et ses
 secrets restent exclusivement côté Supabase.
 

@@ -68,6 +68,11 @@ public final class AppSession {
             "super_admin".equals(role());
     }
 
+    /** Team activity follows the company role, not an old visibility flag. */
+    public boolean canSeeTeamActions() {
+        return "manager".equals(role()) || "company_admin".equals(role());
+    }
+
     public boolean isExpired() {
         try {
             return Instant.parse(expiresAt).isBefore(Instant.now());

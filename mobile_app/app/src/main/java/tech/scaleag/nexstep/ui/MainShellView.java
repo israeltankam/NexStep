@@ -145,6 +145,10 @@ public final class MainShellView extends LinearLayout {
         navigation.addView(navButton("➕", R.string.nav_add, view -> showNewLead()));
         navigation.addView(navButton("📊", R.string.nav_board, view -> showLeadBoard()));
         navigation.addView(navButton("✅", R.string.nav_actions, view -> showActions()));
+        if (session.canSeeTeamActions()) {
+            navigation.addView(navButton("👥", R.string.nav_team_actions,
+                view -> showTeamActions()));
+        }
         scroll.addView(navigation);
         return scroll;
     }
@@ -185,7 +189,11 @@ public final class MainShellView extends LinearLayout {
     }
 
     private void showActions() {
-        replace(new ActionsView(context, api, session));
+        replace(new ActionsView(context, api, session, this::showTeamActions));
+    }
+
+    private void showTeamActions() {
+        replace(new TeamActionsView(context, api, session));
     }
 
     private void showAdmin() {

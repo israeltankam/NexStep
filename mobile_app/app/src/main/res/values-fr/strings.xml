@@ -249,4 +249,17 @@
     <string name="agent_saved">Agent mis à jour.</string>
     <string name="agent_invalid_details">Vérifiez le nom, les coordonnées et le PIN.</string>
     <string name="agent_duplicate_pin">Ce PIN est déjà utilisé dans cette entreprise.</string>
+    <string name="agent_list_load_error">Impossible de charger les agents. Vérifiez la connexion et réessayez.</string>
+    <string name="mobile_update_required">Le service mobile doit être mis à jour dans Supabase.</string>
+    <string name="mobile_migration_required">La fonction de modification d’agent n’est pas encore installée dans Supabase.</string>
+    <string name="nav_team_actions">Actions d’équipe</string>
+    <string name="team_actions">Actions d’équipe</string>
+    <string name="team_actions_loading">Chargement des dernières actions de l’équipe…</string>
+    <string name="team_actions_empty">Aucune action terminée à afficher.</string>
+    <string name="team_actions_range">Actions %1$d à %2$d</string>
+    <string name="team_action_summary">%1$s · %2$s · %3$s</string>
+    <string name="unknown_agent">Agent inconnu</string>
+    <string name="previous_page">Précédentes</string>
+    <string name="next_page">Suivantes</string>
+    <string name="team_actions_load_error">Impossible de charger les actions de l’équipe. Réessayez.</string>
 </resources>

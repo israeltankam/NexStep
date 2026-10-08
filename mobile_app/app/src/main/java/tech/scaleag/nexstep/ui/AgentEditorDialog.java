@@ -145,6 +145,8 @@ final class AgentEditorDialog {
                     saving.setVisibility(View.GONE);
                     Toast.makeText(context, "duplicate_pin".equals(code) ? R.string.agent_duplicate_pin :
                         "invalid_agent_details".equals(code) ? R.string.agent_invalid_details :
+                        "mobile_migration_required".equals(code) ? R.string.mobile_migration_required :
+                        "unknown_operation".equals(code) ? R.string.mobile_update_required :
                         R.string.generic_error, Toast.LENGTH_LONG).show();
                 }
             });

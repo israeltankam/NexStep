@@ -12,6 +12,7 @@ import {
 import type { ApiResult, JsonObject } from "./_shared/types.ts";
 import { reactivateLead, updateLead } from "./_shared/lead_management.ts";
 import { companyAgents, setCompanyAdmin, updateAgent } from "./_shared/agent_management.ts";
+import { teamActions } from "./_shared/team_actions.ts";
 import {
   addContact,
   addComment,
@@ -74,6 +75,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
           return response(await nextAction(context));
         case "actions":
           return response(await actionList(context));
+        case "team_actions":
+          return response(await teamActions(context, payload));
         case "lead_board":
           return response(await leadBoard(context, payload));
         case "update_lead":

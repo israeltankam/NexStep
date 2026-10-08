@@ -64,6 +64,9 @@ export async function updateAgent(context: SessionContext, payload: JsonObject):
   if (result.error) {
     // PostgreSQL supplies the exact validation code; expose only known messages.
     const message = result.error.message;
+    if (result.error.code === "PGRST202" || message.includes("Could not find the function")) {
+      return { status: 503, error: "mobile_migration_required" };
+    }
     for (const code of ["forbidden", "invalid_agent", "invalid_agent_details", "duplicate_pin"]) {
       if (message.includes(code)) return { status: code === "forbidden" ? 403 : 400, error: code };
     }

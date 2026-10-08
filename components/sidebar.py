@@ -31,6 +31,8 @@ def render_sidebar(conn: sqlite3.Connection, session: dict[str, object]) -> str:
         ("lead_board", "📊 " + t("nav.lead_board", language)),
         ("my_actions", "✅ " + t("nav.my_actions", language)),
     ]
+    if session.get("role") in {"manager", "company_admin"}:
+        pages.append(("team_actions", "👥 " + t("nav.team_actions", language)))
     if session.get("role") in {"super_admin", "company_admin"} or session.get("is_global_admin"):
         pages.append(("admin", "⚙️ " + t("nav.admin", language)))
 

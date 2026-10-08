@@ -358,6 +358,7 @@ INDEX_STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS idx_leads_org_status ON leads(organization_id, status_id)",
     "CREATE INDEX IF NOT EXISTS idx_leads_org_stage ON leads(organization_id, stage_id)",
     "CREATE INDEX IF NOT EXISTS idx_actions_org_user_status_due ON actions(organization_id, assigned_to_org_user_id, status, due_date)",
+    "CREATE INDEX IF NOT EXISTS idx_actions_team_completed ON actions(organization_id, completed_at DESC, id DESC) WHERE status = 'done' AND completed_at IS NOT NULL",
     "CREATE INDEX IF NOT EXISTS idx_actions_org_lead ON actions(organization_id, lead_id)",
     "CREATE INDEX IF NOT EXISTS idx_touchpoints_lead_date ON touchpoints(lead_id, occurred_at)",
     "CREATE INDEX IF NOT EXISTS idx_contacts_lead ON contacts(lead_id)",

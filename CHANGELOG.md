@@ -1,5 +1,12 @@
 # Journal de modifications NexStep
 
+## 2026-10-08
+
+- L’édition d’un agent est mise en évidence en haut de l’administration mobile ; les erreurs indiquent si l’API ou la migration Supabase attendue manque.
+- Ajout d’« Actions d’équipe » pour les responsables d’équipe et administrateurs d’entreprise, sur Streamlit et Android : actions terminées classées de la plus récente à la plus ancienne, 20 par page, pagination par offset, contrôle serveur et requêtes limitées.
+- Ajout d’un index PostgreSQL pour cette consultation, de traductions FR/EN, du guide utilisateur bilingue et de la version Android `1.0.8` (`versionCode 9`).
+- Validation de 129 tests Python, 23 tests Deno, 919 contrôles statiques mobiles, audit FR/EN, typage TypeScript, Android Lint et compilation de l’APK. Aucune donnée de test n’a été laissée en base.
+
 ## 2026-10-03
 
 - L’administrateur général scale.ag peut désormais modifier la fiche complète d’un agent depuis l’onglet « Utilisateurs » : identité, coordonnées, langue, état du compte, accès à l’entreprise et PIN facultatif.

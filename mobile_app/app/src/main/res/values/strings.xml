@@ -247,4 +247,17 @@
     <string name="agent_saved">Agent updated.</string>
     <string name="agent_invalid_details">Check the name, contact details and PIN.</string>
     <string name="agent_duplicate_pin">This PIN is already used in this company.</string>
+    <string name="agent_list_load_error">Could not load agents. Check your connection and try again.</string>
+    <string name="mobile_update_required">The mobile service needs to be updated in Supabase.</string>
+    <string name="mobile_migration_required">The agent update function has not been installed in Supabase yet.</string>
+    <string name="nav_team_actions">Team actions</string>
+    <string name="team_actions">Team actions</string>
+    <string name="team_actions_loading">Loading the team’s latest actions…</string>
+    <string name="team_actions_empty">No completed actions to show.</string>
+    <string name="team_actions_range">Actions %1$d to %2$d</string>
+    <string name="team_action_summary">%1$s · %2$s · %3$s</string>
+    <string name="unknown_agent">Unknown agent</string>
+    <string name="previous_page">Previous</string>
+    <string name="next_page">Next</string>
+    <string name="team_actions_load_error">Could not load team actions. Try again.</string>
 </resources>

@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -44,7 +45,8 @@ public final class ActionsView extends LinearLayout {
     private final EditText search;
     private final Spinner urgency;
 
-    public ActionsView(Context context, NexStepApiClient api, AppSession session) {
+    public ActionsView(Context context, NexStepApiClient api, AppSession session,
+                       Runnable showTeamActions) {
         super(context);
         this.context = context;
         this.api = api;
@@ -54,6 +56,13 @@ public final class ActionsView extends LinearLayout {
         setPadding(UiKit.dp(context, 16), UiKit.dp(context, 12), UiKit.dp(context, 16), 0);
 
         addView(UiKit.title(context, "✅ " + context.getString(R.string.my_actions)));
+        if (session.canSeeTeamActions()) {
+            // Keep the new destination discoverable on narrow navigation bars.
+            Button team = UiKit.commandButton(context,
+                "👥 " + context.getString(R.string.team_actions));
+            team.setOnClickListener(view -> showTeamActions.run());
+            addView(team);
+        }
         search = UiKit.input(context, context.getString(R.string.search), false);
         search.addTextChangedListener(new SimpleTextWatcher(this::applyFilters));
         addView(search);
